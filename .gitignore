@@ -1,0 +1,27 @@
+# Configuration files with local environment settings
+config/forge.env
+*.env
+
+# Temporary and test scripts
+test.yaml
+debug_yaml.sh
+test_yq.sh
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# OS generated files
+.DS_Store
+
+# Downloaded VM images and checksums
+CHECKSUM
+MD5SUMS
+*.img
+*.qcow2
+host/*.img
+host/*.qcow2
+host/MD5SUMS
+host/CHECKSUM

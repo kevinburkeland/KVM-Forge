@@ -1,0 +1,32 @@
+#cloud-config
+users:
+  - name: PLACEHOLDER_USER
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - SSH_KEY_PLACEHOLDER
+disable_root: true
+ssh_pwauth: false
+hostname: PLACEHOLDER_HOSTNAME
+create_hostname_file: true
+fqdn: PLACEHOLDER_FQDN
+prefer_fqdn_over_hostname: true
+timezone: PLACEHOLDER_TIMEZONE
+package_update: true
+package_upgrade: true
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+packages:
+  - htop
+  - ncdu
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+  - qemu-guest-agent
+runcmd:
+  - sudo systemctl enable --now qemu-guest-agent

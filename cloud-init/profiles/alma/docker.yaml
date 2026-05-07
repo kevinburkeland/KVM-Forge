@@ -1,0 +1,37 @@
+#cloud-config
+users:
+  - name: PLACEHOLDER_USER
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - SSH_KEY_PLACEHOLDER
+disable_root: true
+ssh_pwauth: false
+hostname: PLACEHOLDER_HOSTNAME
+create_hostname_file: true
+fqdn: PLACEHOLDER_FQDN
+prefer_fqdn_over_hostname: true
+timezone: PLACEHOLDER_TIMEZONE
+package_update: true
+package_upgrade: true
+
+yum_repos:
+  docker-ce:
+    name: Docker CE Stable
+    baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
+    enabled: true
+    gpgcheck: true
+    gpgkey: https://download.docker.com/linux/centos/gpg
+
+packages:
+  - epel-release
+  - qemu-guest-agent
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+runcmd:
+  - sudo systemctl enable --now qemu-guest-agent
+  - sudo systemctl enable --now docker
+  - sudo dnf install -y htop ncdu

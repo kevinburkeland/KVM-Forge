@@ -1,0 +1,23 @@
+#cloud-config
+users:
+  - name: PLACEHOLDER_USER
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - SSH_KEY_PLACEHOLDER
+disable_root: true
+ssh_pwauth: false
+hostname: PLACEHOLDER_HOSTNAME
+create_hostname_file: true
+fqdn: PLACEHOLDER_FQDN
+prefer_fqdn_over_hostname: true
+timezone: PLACEHOLDER_TIMEZONE
+package_update: true
+package_upgrade: true
+
+packages:
+  - epel-release
+  - qemu-guest-agent
+runcmd:
+  - sudo systemctl enable --now qemu-guest-agent
+  - sudo dnf install -y htop ncdu

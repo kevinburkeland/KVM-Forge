@@ -1,0 +1,103 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source common library
+source "${SCRIPT_DIR}/../lib/common.sh"
+
+gather_inputs() {
+    # ── Header ──────────────────────────────────────────────────────────────────
+    gum style \
+        --foreground 212 --border-foreground 212 --border double \
+        --align center --width 50 --margin "1 2" --padding "1 4" \
+        'KVM-Forge Provisioner' "${FORGE_BASE_DOMAIN:-localhost}"
+
+    # ── Distro ──────────────────────────────────────────────────────────────────
+    gum style --foreground 99 --bold "Select a distro:"
+    DISTRO=$(gum choose --selected "ubuntu" "ubuntu" "alma")
+
+    # ── Version ─────────────────────────────────────────────────────────────────
+    if [ "$DISTRO" = "ubuntu" ]; then
+        DEFAULT_VERSION="24.04"
+        VERSION_HINT="e.g. 22.04, 24.04"
+    else
+        DEFAULT_VERSION="10"
+        VERSION_HINT="e.g. 9, 10"
+    fi
+
+    gum style --foreground 99 --bold "Distro version (${VERSION_HINT}):"
+    VERSION=$(gum input --placeholder "$DEFAULT_VERSION" --value "$DEFAULT_VERSION")
+    VERSION="${VERSION:-$DEFAULT_VERSION}"
+
+    # ── Profile ─────────────────────────────────────────────────────────────────
+    gum style --foreground 99 --bold "Select a profile:"
+    PROFILE=$(gum choose --selected "base" "base" "docker" "python")
+
+    # ── vCPUs ───────────────────────────────────────────────────────────────────
+    gum style --foreground 99 --bold "Number of vCPUs:"
+    VCPU=$(gum input --placeholder "4" --value "4")
+    VCPU="${VCPU:-4}"
+    if ! [[ "$VCPU" =~ ^[1-9][0-9]*$ ]]; then
+        gum style --foreground 196 "Invalid vCPU count '$VCPU'. Must be a positive integer."
+        exit 1
+    fi
+
+    # ── Memory ──────────────────────────────────────────────────────────────────
+    gum style --foreground 99 --bold "Memory in MB (e.g. 2048, 4096, 8192):"
+    MEMORY=$(gum input --placeholder "8192" --value "8192")
+    MEMORY="${MEMORY:-8192}"
+    if ! [[ "$MEMORY" =~ ^[1-9][0-9]*$ ]]; then
+        gum style --foreground 196 "Invalid memory '$MEMORY'. Must be a positive integer (MB)."
+        exit 1
+    fi
+
+    # ── Disk Size ───────────────────────────────────────────────────────────────
+    gum style --foreground 99 --bold "Disk size in GB:"
+    DISK_SIZE=$(gum input --placeholder "30" --value "30")
+    DISK_SIZE="${DISK_SIZE:-30}"
+    if ! [[ "$DISK_SIZE" =~ ^[1-9][0-9]*$ ]]; then
+        gum style --foreground 196 "Invalid disk size '$DISK_SIZE'. Must be a positive integer (GB)."
+        exit 1
+    fi
+}
+
+show_summary_and_confirm() {
+    echo ""
+    gum style \
+        --foreground 212 --border-foreground 99 --border rounded \
+        --align left --margin "0 2" --padding "1 3" \
+        "$(printf '%-12s %s' 'Distro:'    "$DISTRO")" \
+        "$(printf '%-12s %s' 'Version:'   "$VERSION")" \
+        "$(printf '%-12s %s' 'Profile:'   "$PROFILE")" \
+        "$(printf '%-12s %s' 'vCPUs:'     "$VCPU")" \
+        "$(printf '%-12s %s' 'Memory:'    "${MEMORY} MB")" \
+        "$(printf '%-12s %s' 'Disk:'      "${DISK_SIZE} GB")"
+    echo ""
+
+    if ! gum confirm "Provision this VM locally?"; then
+        gum style --foreground 214 "Aborted."
+        exit 0
+    fi
+}
+
+execute_cli() {
+    echo ""
+    "${SCRIPT_DIR}/kvm-forge-cli" \
+        --distro    "$DISTRO" \
+        --version   "$VERSION" \
+        --profile   "$PROFILE" \
+        --cpus      "$VCPU" \
+        --memory    "$MEMORY" \
+        --disk-size "$DISK_SIZE"
+}
+
+main() {
+    check_and_install_dependencies "gum"
+    
+    gather_inputs
+    show_summary_and_confirm
+    execute_cli
+}
+
+main "$@"

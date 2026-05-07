@@ -1,0 +1,11 @@
+network:
+  version: 2
+  ethernets:
+    INTERFACE_NAME:
+      dhcp4: false
+      addresses:
+        - 172.26.70.59/16
+      gateway4: 172.26.0.1
+      nameservers:
+        search: [beltec.us]
+        addresses: [172.26.1.2, 172.26.1.3]

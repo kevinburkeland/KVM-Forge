@@ -1,0 +1,131 @@
+#!/bin/bash
+set -e
+
+# Find the directory of this script, which allows it to run from any location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Define the absolute path to the main provisioning script
+PROVISION_SCRIPT="$(realpath "${SCRIPT_DIR}/../host/provision_vm.sh")"
+
+# Source the common library functions (like logging)
+source "${SCRIPT_DIR}/../lib/common.sh"
+
+# Calls the underlying provision_vm.sh script and captures its output
+execute_provisioner() {
+    log_info "Provisioning $DISTRO VM with profile $PROFILE locally..."
+
+    # If a specific OS version was passed, add it as a flag
+    if [ -n "$VERSION" ]; then
+        VERSION_FLAG="-v ${VERSION}"
+    else
+        VERSION_FLAG=""
+    fi
+
+    # Run the core provisioning script with elevated privileges using sudo.
+    # We capture all standard output into a variable so we can parse out the VM details.
+    RAW_OUTPUT=$(sudo "$PROVISION_SCRIPT" -d "$DISTRO" -p "$PROFILE" -c "$VCPU" -m "$MEMORY" -s "$DISK_SIZE" $VERSION_FLAG)
+
+    # The provision_vm.sh script is designed to print the Name, IP, and Username as its final three lines.
+    # We use 'tail' and 'head' to extract those specific lines into variables.
+    VMNAME=$(echo "$RAW_OUTPUT" | tail -n 3 | head -n 1)
+    VMIP=$(echo "$RAW_OUTPUT" | tail -n 2 | head -n 1)
+    VMUSER=$(echo "$RAW_OUTPUT" | tail -n 1)
+
+    # If any of the variables are empty, the provisioning failed. We print the raw output so the user can debug.
+    if [ -z "$VMNAME" ] || [ -z "$VMIP" ] || [ -z "$VMUSER" ]; then
+        log_err "Failed to get VM details from provision script."
+        log_err "Raw output was:"
+        echo "$RAW_OUTPUT" >&2
+        exit 1
+    fi
+
+    # Export these variables so they can be used in subsequent functions
+    export VMNAME VMIP VMUSER
+    log_info "The VM is named $VMNAME"
+    log_info "The IP is $VMIP"
+    log_info "The Default User is $VMUSER"
+}
+
+# Repeatedly pings the new VM's IP address until it receives a response
+wait_for_vm() {
+    log_info "Waiting for VM to respond to ping at $VMIP..."
+    
+    # An infinite loop that breaks only when the ping command succeeds
+    while true; do
+        # -c 1 sends exactly one packet. We send the output to /dev/null to keep the terminal clean.
+        ping -c 1 "$VMIP" &>/dev/null && break
+        sleep 5
+    done
+}
+
+# Removes old SSH signatures from the known_hosts file
+update_known_hosts() {
+    if [ -f ~/.ssh/known_hosts ]; then
+        # When an IP address is reused, SSH will warn about a Man-In-The-Middle attack.
+        # This safely removes the old keys associated with this IP to prevent that error.
+        ssh-keygen -f ~/.ssh/known_hosts -R "$VMIP" &>/dev/null
+        ssh-keygen -f ~/.ssh/known_hosts -R "$VMNAME" &>/dev/null
+    fi
+}
+
+# Waits for SSH to become available, then streams the cloud-init logs
+wait_for_cloud_init() {
+    log_info "Waiting for cloud-init to finish (this may take a few minutes)..."
+    
+    # SSH Options:
+    # StrictHostKeyChecking=accept-new: Automatically accept the new fingerprint without prompting.
+    # UserKnownHostsFile=/dev/null: Don't save the fingerprint (since VMs are volatile).
+    # ConnectTimeout=5: Fail fast if the connection hangs.
+    SSH_OPTS="-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
+    
+    # If a custom SSH key was specified in setup, we inject it into the command
+    if [ -n "$FORGE_SSH_KEY_PATH" ]; then
+        # Remove the .pub extension to get the path to the private key
+        PRIVATE_KEY="${FORGE_SSH_KEY_PATH%.pub}"
+        # Expand the tilde (~) shortcut to the user's actual home directory
+        PRIVATE_KEY="${PRIVATE_KEY/#\~/$HOME}"
+        if [ -f "$PRIVATE_KEY" ]; then
+            SSH_OPTS="$SSH_OPTS -i $PRIVATE_KEY"
+        fi
+    fi
+
+    log_info "SSH Connection Command: ssh $SSH_OPTS $VMUSER@$VMIP"
+    log_info "Waiting for SSH daemon to start..."
+    
+    # Loop until we can successfully execute the 'exit' command over SSH
+    while true; do
+        # BatchMode=yes prevents SSH from ever prompting for a password, failing immediately instead.
+        if ssh $SSH_OPTS -o BatchMode=yes "$VMUSER@$VMIP" "exit" &>/dev/null; then
+            break
+        fi
+        sleep 5
+    done
+
+    log_info "SSH is up! Streaming cloud-init logs until finished..."
+    
+    # Connect via SSH and run two commands simultaneously:
+    # 1. 'tail -f' constantly prints new lines from the cloud-init log. We background this with '&' and save its Process ID ($!).
+    # 2. 'cloud-init status --wait' blocks execution until cloud-init officially finishes setting up the OS.
+    # 3. Once cloud-init finishes, we 'kill' the tail process using its Process ID so the script can exit cleanly.
+    ssh $SSH_OPTS "$VMUSER@$VMIP" "sudo tail -n +1 -f /var/log/cloud-init-output.log & TAIL_PID=\$!; cloud-init status --wait >/dev/null 2>&1; sudo kill \$TAIL_PID 2>/dev/null"
+}
+
+# The main function orchestrates the flow
+main() {
+    # Inherited from common.sh, this parses the command-line flags (-d, -p, etc.)
+    parse_vm_args "$@"
+    
+    # Execute the steps sequentially
+    execute_provisioner
+    wait_for_vm
+    update_known_hosts
+    wait_for_cloud_init
+    
+    log_info "Provisioning complete!"
+    log_info "The VM is named $VMNAME"
+    log_info "The IP is $VMIP"
+}
+
+# Only run 'main' if this script is executed directly (not sourced by bats tests)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

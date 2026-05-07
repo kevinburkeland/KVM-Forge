@@ -1,2 +1,50 @@
 # KVM-Forge
-A KVM automation script for forging VMs the easy way
+
+KVM-Forge is an automated, highly-modular provisioning system for creating and managing KVM virtual machines. Designed for local infrastructure and homelabs, it provides a simple CLI framework that supports multiple Linux distributions (Ubuntu, AlmaLinux) and allows you to rapidly deploy VMs with pre-configured software stacks via `cloud-init`.
+
+## ✨ Features
+
+- **Multi-Distro Support:** Seamlessly deploy Ubuntu and AlmaLinux, automatically handling OS-specific quirks like predictable network interface names and checksum algorithms.
+- **Automated Provisioning:** Uses `cloud-init` and `virt-install` to bootstrap new VMs with your SSH keys, custom users, and security hardening (disabled root SSH & password auth).
+- **Dynamic Networking:** Automatically scans your local subnet with `nmap`, identifies active IPs, and assigns the first available IP address to your new VM.
+- **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, and `python`.
+- **Interactive Setup:** Includes a `setup.sh` script powered by `gum` for a beautiful Terminal UI setup experience.
+- **Fully Tested:** Includes a robust `bats-core` unit testing suite with mocked dependencies to ensure long-term reliability.
+
+## 🚀 Getting Started
+
+### Prerequisites
+Before starting, ensure your host machine is a Linux environment with KVM and Libvirt installed and running.
+
+### 1. Setup Your Environment
+Run the interactive setup script to configure your bridge interface, timezone, network details, and default SSH keys. This will securely generate a local `config/forge.env` file.
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+### 2. Provision a VM
+Use the CLI tool to provision a new virtual machine. You can customize the distribution, profile, and hardware resources using flags.
+
+```bash
+# Example: Deploy an AlmaLinux Docker host with 4 cores, 8GB RAM, and 50GB disk
+bin/kvm-forge-cli --distro alma --profile docker --cpus 4 --memory 8192 --disk-size 50
+```
+
+**Available Flags:**
+- `-d, --distro` : Distro to use (`ubuntu` or `alma`, default: `ubuntu`)
+- `-v, --version` : Distro version (default: `24.04` for ubuntu, `10` for alma)
+- `-p, --profile` : Software profile to use (`base`, `docker`, `python`)
+- `-c, --cpus` : Number of vCPUs (default: 4)
+- `-m, --memory` : Memory in MB (default: 8192)
+- `-s, --disk-size`: Disk size in GB (default: 30)
+
+### 3. Run Unit Tests
+To run the testing suite, ensure you have `bats` installed on your host system, then run:
+```bash
+./tests/run_tests.sh
+```
+
+## 🤖 AI Generation Disclosure
+
+**Note:** Portions of the code in this repository—including the provisioning scripts, cloud-init configurations, dynamic networking logic, and security hardening—were generated and refined with the assistance of an AI coding agent (Antigravity by Google DeepMind). This was done to accelerate development, improve modularity, and ensure enterprise-grade bash best practices.
