@@ -61,3 +61,9 @@ To run the testing suite, ensure you have `bats` installed on your host system, 
 ## 🤖 AI Generation Disclosure
 
 **Note:** Portions of the code in this repository—including the provisioning scripts, cloud-init configurations, dynamic networking logic, and security hardening—were generated and refined with the assistance of an AI coding agent (Antigravity by Google DeepMind). This was done to accelerate development, improve modularity, and ensure enterprise-grade bash best practices.
+
+---
+
+## 📋 Roadmap
+
+See [TODO.md](TODO.md) for planned features, additional distros, new profiles, and other improvements.
