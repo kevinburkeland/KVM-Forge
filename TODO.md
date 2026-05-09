@@ -6,10 +6,10 @@ A running list of planned improvements and additions.
 
 ## 🐧 Distros
 
-- [ ] Add **Debian** support (cloud image + checksum handling)
+- [x] Add **Debian** support (cloud image + checksum handling)
 - [ ] Add **Fedora** support
 - [ ] Add **Rocky Linux** support
-- [ ] Add **openSUSE** support
+- [ ]S Add **openSUSE** support
 - [ ] Auto-fetch latest cloud image URLs instead of hardcoding versions
 
 ---
