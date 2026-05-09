@@ -158,8 +158,8 @@ parse_vm_args() {
                 # Display usage instructions
                 echo "Usage: $0 [OPTIONS]"
                 echo "Options:"
-                echo "  -d, --distro      Distro to use (ubuntu or alma, default: ubuntu)"
-                echo "  -v, --version     Distro version (default: 24.04 for ubuntu, 10 for alma)"
+                echo "  -d, --distro      Distro to use (ubuntu, alma, or debian, default: ubuntu)"
+                echo "  -v, --version     Distro version (e.g. 24.04, 10, 12)"
                 echo "  -p, --profile     Profile to use (default: base)"
                 echo "  -c, --cpus        Number of vCPUs (default: 4)"
                 echo "  -m, --memory      Memory in MB (default: 8192)"
@@ -174,10 +174,13 @@ parse_vm_args() {
 
     # If the user didn't specify an OS version, use the predefined defaults
     if [ -z "$VERSION" ]; then
-        if [ "$DISTRO" == "ubuntu" ]; then
-            VERSION="24.04"
-        elif [ "$DISTRO" == "alma" ]; then
-            VERSION="10"
+        DISTRO_MODULE="${FORGE_ROOT}/lib/distros/${DISTRO}.sh"
+        if [ -f "$DISTRO_MODULE" ]; then
+            source "$DISTRO_MODULE"
+            VERSION="$DISTRO_DEFAULT_VERSION"
+        else
+            log_err "Unknown distro: $DISTRO"
+            exit 1
         fi
     fi
 

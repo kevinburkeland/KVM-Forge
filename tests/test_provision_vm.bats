@@ -8,7 +8,7 @@ setup() {
 
     # We need to set some environment variables that the script expects
     export SCRIPT_DIR="${BATS_TEST_DIRNAME}/../host"
-    export CLOUD_INIT_DIR="${BATS_TEST_DIRNAME}/../cloud-init"
+    export CLOUD_INIT_DIR="${BATS_TEST_DIRNAME}/mock_cloud_init"
     export FORGE_BRIDGE_IF="testbridge"
     export FORGE_SUBNET_SCAN="192.168.1.0/24"
     export DISTRO="ubuntu"
@@ -56,6 +56,7 @@ EOF
 
 teardown() {
     rm -rf "$MOCK_DIR"
+    rm -rf "${BATS_TEST_DIRNAME}/mock_cloud_init"
 }
 
 @test "get_available_ip correctly identifies a free IP" {
@@ -80,6 +81,8 @@ teardown() {
     export DISTRO="ubuntu"
     export VERSION="24.04"
     
+    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
+
     # Mock wget and md5sum to prevent actual download
     cat << 'EOF' > "${MOCK_DIR}/wget"
 #!/bin/bash
