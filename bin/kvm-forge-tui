@@ -15,15 +15,17 @@ gather_inputs() {
 
     # ── Distro ──────────────────────────────────────────────────────────────────
     gum style --foreground 99 --bold "Select a distro:"
-    DISTRO=$(gum choose --selected "ubuntu" "ubuntu" "alma")
+    DISTRO=$(gum choose --selected "ubuntu" "ubuntu" "alma" "debian")
 
     # ── Version ─────────────────────────────────────────────────────────────────
-    if [ "$DISTRO" = "ubuntu" ]; then
-        DEFAULT_VERSION="24.04"
-        VERSION_HINT="e.g. 22.04, 24.04"
+    DISTRO_MODULE="${SCRIPT_DIR}/../lib/distros/${DISTRO}.sh"
+    if [ -f "$DISTRO_MODULE" ]; then
+        source "$DISTRO_MODULE"
+        DEFAULT_VERSION="$DISTRO_DEFAULT_VERSION"
+        VERSION_HINT="$DISTRO_VERSION_HINT"
     else
-        DEFAULT_VERSION="10"
-        VERSION_HINT="e.g. 9, 10"
+        gum style --foreground 196 "Error: Module for $DISTRO not found."
+        exit 1
     fi
 
     gum style --foreground 99 --bold "Distro version (${VERSION_HINT}):"

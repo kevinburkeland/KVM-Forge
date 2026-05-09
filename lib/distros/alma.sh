@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Default version settings for AlmaLinux
+DISTRO_DEFAULT_VERSION="10"
+DISTRO_VERSION_HINT="e.g. 9, 10"
+
+# Returns the primary network interface name for AlmaLinux
+get_interface_name() {
+    echo "eth0"
+}
+
+# Downloads and verifies the AlmaLinux cloud image
+download_os_image() {
+    # Configure variables specific to AlmaLinux cloud images
+    IMG_NAME="AlmaLinux-${VERSION}-GenericCloud-latest.x86_64.qcow2"
+    OS_VARIANT="almalinux${VERSION}"
+    CHECKSUM_FILE="CHECKSUM"
+    
+    log_info "Checking AlmaLinux ${VERSION} image..."
+    wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/CHECKSUM" -O $CHECKSUM_FILE
+    
+    if [ ! -f "$IMG_NAME" ]; then
+        wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/$IMG_NAME"
+    fi
+
+    # Alma uses SHA256 hashes instead of MD5 for better security
+    if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha256sum --status -c -; then
+        log_err "SHA256 mismatch or file corrupt. Redownloading..."
+        rm -f "$IMG_NAME"
+        wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/$IMG_NAME"
+        if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha256sum --status -c -; then
+            log_err "Something is fishy with the mirror, SHA256 still mismatches after redownload."
+            exit 1
+        fi
+    fi
+
+    # Export variables needed by launch_vm
+    export IMG_NAME OS_VARIANT
+
+    LIBVIRT_IMG_PATH="/var/lib/libvirt/images/${IMG_NAME}"
+    if [ ! -f "$LIBVIRT_IMG_PATH" ]; then
+        log_info "Copying base image to libvirt images directory..."
+        sudo cp "$IMG_NAME" "$LIBVIRT_IMG_PATH"
+        sudo chmod 640 "$LIBVIRT_IMG_PATH"
+    fi
+}

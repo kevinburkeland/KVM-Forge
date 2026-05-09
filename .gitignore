@@ -25,3 +25,4 @@ host/*.img
 host/*.qcow2
 host/MD5SUMS
 host/CHECKSUM
+SHA512SUMS

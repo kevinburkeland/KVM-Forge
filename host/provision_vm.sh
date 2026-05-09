@@ -10,83 +10,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 # Determine the absolute path to the cloud-init directory
-CLOUD_INIT_DIR="$(realpath "${SCRIPT_DIR}/../cloud-init")"
+CLOUD_INIT_DIR="${CLOUD_INIT_DIR:-$(realpath "${SCRIPT_DIR}/../cloud-init")}"
 
 # Set fallback variables in case the user hasn't run setup.sh to create forge.env
 BRIDGE_IF="${FORGE_BRIDGE_IF:-bridge0}"
 SUBNET_SCAN="${FORGE_SUBNET_SCAN:-172.26.70.0/24}"
 CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-16}"
 
-# Downloads the correct cloud image for the selected operating system
-download_os_image() {
-    if [ "$DISTRO" == "ubuntu" ]; then
-        # Configure variables specific to Ubuntu cloud images
-        IMG_NAME="ubuntu-${VERSION}-server-cloudimg-amd64.img"
-        OS_VARIANT="ubuntu${VERSION}"
-        CHECKSUM_FILE="MD5SUMS"
-        
-        log_info "Checking Ubuntu ${VERSION} image..."
-        # Download the official MD5SUMS file for validation
-        wget -q "https://cloud-images.ubuntu.com/releases/${VERSION}/release/MD5SUMS" -O $CHECKSUM_FILE
-        
-        # If we don't have the image file locally, download it
-        if [ ! -f "$IMG_NAME" ]; then
-            wget -q "https://cloud-images.ubuntu.com/releases/${VERSION}/release/$IMG_NAME"
-        fi
 
-        # Validate the downloaded image against the MD5SUMS file.
-        # This prevents provisioning corrupted or tampered images.
-        if ! grep "$IMG_NAME" $CHECKSUM_FILE | md5sum --status -c -; then
-            log_err "MD5 mismatch or file corrupt. Redownloading..."
-            rm -f "$IMG_NAME"
-            wget -q "https://cloud-images.ubuntu.com/releases/${VERSION}/release/$IMG_NAME"
-            
-            # If it fails a second time, abort to prevent bad deployments.
-            if ! grep "$IMG_NAME" $CHECKSUM_FILE | md5sum --status -c -; then
-                log_err "Something is fishy with the mirror, MD5 still mismatches after redownload."
-                exit 1
-            fi
-        fi
-    elif [ "$DISTRO" == "alma" ]; then
-        # Configure variables specific to AlmaLinux cloud images
-        IMG_NAME="AlmaLinux-${VERSION}-GenericCloud-latest.x86_64.qcow2"
-        OS_VARIANT="almalinux${VERSION}"
-        CHECKSUM_FILE="CHECKSUM"
-        
-        log_info "Checking AlmaLinux ${VERSION} image..."
-        wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/CHECKSUM" -O $CHECKSUM_FILE
-        
-        if [ ! -f "$IMG_NAME" ]; then
-            wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/$IMG_NAME"
-        fi
-
-        # Alma uses SHA256 hashes instead of MD5 for better security
-        if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha256sum --status -c -; then
-            log_err "SHA256 mismatch or file corrupt. Redownloading..."
-            rm -f "$IMG_NAME"
-            wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/$IMG_NAME"
-            if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha256sum --status -c -; then
-                log_err "Something is fishy with the mirror, SHA256 still mismatches after redownload."
-                exit 1
-            fi
-        fi
-    else
-        log_err "Unknown distro: $DISTRO"
-        exit 1
-    fi
-    
-    # Make the final image name and OS variant accessible outside this function
-    export IMG_NAME OS_VARIANT
-
-    # Copy the verified image to the official libvirt directory so QEMU can read it securely
-    LIBVIRT_IMG_PATH="/var/lib/libvirt/images/${IMG_NAME}"
-    if [ ! -f "$LIBVIRT_IMG_PATH" ]; then
-        log_info "Copying base image to libvirt images directory..."
-        sudo cp "$IMG_NAME" "$LIBVIRT_IMG_PATH"
-        # 640 restricts read access to owner and group, enhancing security
-        sudo chmod 640 "$LIBVIRT_IMG_PATH"
-    fi
-}
 
 # Finds an unused IP address on the local network for the new VM
 get_available_ip() {
@@ -183,12 +114,8 @@ EOF
         mv "${file}.tmp" "$file"
     }
 
-    # Different Linux distributions use different names for their primary network interface
-    if [ "$DISTRO" == "ubuntu" ]; then
-        export IFACE_NAME="enp1s0" # Ubuntu uses predictable network naming
-    else
-        export IFACE_NAME="eth0"   # AlmaLinux cloud images default back to traditional eth0
-    fi
+    # Get the primary network interface name from the distribution module
+    export IFACE_NAME="$(get_interface_name)"
     
     # Replace the INTERFACE_NAME placeholder in the network-config with the actual interface
     sed -i "s/INTERFACE_NAME/$IFACE_NAME/g" "$TEMP_DIR/network-config"
@@ -269,6 +196,14 @@ main() {
     
     # Parse CLI flags into variables (e.g., -d ubuntu -c 4)
     parse_vm_args "$@"
+
+    # Source the appropriate distribution module
+    DISTRO_MODULE="${SCRIPT_DIR}/../lib/distros/${DISTRO}.sh"
+    if [ ! -f "$DISTRO_MODULE" ]; then
+        log_err "Distribution module '$DISTRO' not found at $DISTRO_MODULE."
+        exit 1
+    fi
+    source "$DISTRO_MODULE"
 
     # Verify that the requested configuration profile actually exists
     USER_DATA_FILE="${CLOUD_INIT_DIR}/profiles/${DISTRO}/${PROFILE}.yaml"
