@@ -9,7 +9,7 @@ A running list of planned improvements and additions.
 - [x] Add **Debian** support (cloud image + checksum handling)
 - [ ] Add **Fedora** support
 - [ ] Add **Rocky Linux** support
-- [ ]S Add **openSUSE** support
+- [ ] Add **openSUSE** support
 - [ ] Auto-fetch latest cloud image URLs instead of hardcoding versions
 
 ---
