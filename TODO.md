@@ -40,21 +40,26 @@ A running list of planned improvements and additions.
 - [ ] `--list-profiles` flag to print available profiles for a given distro
 - [ ] `--list-distros` flag to print supported distros and versions
 - [ ] `--dry-run` flag to print the resolved config without provisioning
-- [ ] Validate that requested profile exists for the selected distro before starting
+- [x] Validate that requested profile exists for the selected distro before starting
+- [x] Add bounded timeout retries for ping/SSH wait loops
 
 ---
 
 ## 🧪 Testing
 
-- [ ] Add bats tests for `kvm-forge-tui` input validation logic
-- [ ] Add tests for profile resolution and missing-profile error handling
+- [x] Add bats tests for `kvm-forge-tui` input validation logic
+- [x] Add tests for profile resolution and missing-profile error handling
+- [x] Add tests for CLI wait/cloud-init retry behavior
+- [x] Add tests for distro checksum mismatch + redownload paths
 - [ ] Add integration smoke test that verifies cloud-init YAML is valid
 
 ---
 
 ## 📦 Infrastructure / Misc
 
-- [ ] Package `setup.sh` dependency checks into `lib/common.sh`
+- [x] Package `setup.sh` dependency checks into `lib/common.sh`
 - [ ] Add a `kvm-forge-destroy` script to cleanly remove a VM and its disk
 - [ ] Support reading default flag values from `config/forge.env`
 - [ ] GitHub Actions CI to run bats test suite on push
+- [ ] Add shellcheck linting and enforce it in CI
+- [ ] Expand env-file validation to support safe escaped values while rejecting command substitution
