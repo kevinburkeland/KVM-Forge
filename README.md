@@ -4,7 +4,7 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 
 ## ✨ Features
 
-- **Multi-Distro Support:** Seamlessly deploy Ubuntu and AlmaLinux, automatically handling OS-specific quirks like predictable network interface names and checksum algorithms.
+- **Multi-Distro Support:** Seamlessly deploy Ubuntu, Debian, and AlmaLinux, automatically handling OS-specific quirks like predictable network interface names and checksum algorithms.
 - **Automated Provisioning:** Uses `cloud-init` and `virt-install` to bootstrap new VMs with your SSH keys, custom users, and security hardening (disabled root SSH & password auth).
 - **Dynamic Networking:** Automatically scans your local subnet with `nmap`, identifies active IPs, and assigns the first available IP address to your new VM.
 - **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, and `python`.
