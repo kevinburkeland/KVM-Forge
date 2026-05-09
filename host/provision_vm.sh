@@ -1,6 +1,6 @@
 #!/bin/bash
 # Exit the script immediately if any command returns a non-zero exit status
-set -e
+set -euo pipefail
 
 # Dynamically find the script's directory and change into it.
 # This guarantees relative paths work correctly no matter where the script is executed from.
@@ -124,15 +124,15 @@ EOF
     yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.addresses[0] = env(NEWIP_YAML)"
 
     # Inject DNS and Gateway settings if they were defined during setup.sh
-    if [ -n "$FORGE_GATEWAY" ]; then
+    if [ -n "${FORGE_GATEWAY:-}" ]; then
         export FORGE_GATEWAY
         yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.gateway4 = env(FORGE_GATEWAY)"
     fi
-    if [ -n "$FORGE_DNS_SEARCH" ]; then
+    if [ -n "${FORGE_DNS_SEARCH:-}" ]; then
         export FORGE_DNS_SEARCH
         yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.nameservers.search[0] = env(FORGE_DNS_SEARCH)"
     fi
-    if [ -n "$FORGE_DNS_SERVERS" ]; then
+    if [ -n "${FORGE_DNS_SERVERS:-}" ]; then
         export FORGE_DNS_SERVERS
         # Convert the comma-separated DNS list into a true YAML array
         yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.nameservers.addresses = (env(FORGE_DNS_SERVERS) | split(\",\"))"
@@ -146,18 +146,19 @@ EOF
     yq_edit "$TEMP_DIR/user-data" '.fqdn = env(REPNAME_FQDN)'
 
     # Inject the Timezone
-    if [ -n "$FORGE_TIMEZONE" ]; then
+    if [ -n "${FORGE_TIMEZONE:-}" ]; then
         export FORGE_TIMEZONE
         yq_edit "$TEMP_DIR/user-data" '.timezone = env(FORGE_TIMEZONE)'
     fi
 
     # Expand the tilde (~) in the SSH path into a true absolute path (e.g., /home/kevin)
-    if [ -n "$SUDO_USER" ]; then
+    if [ -n "${SUDO_USER:-}" ]; then
         USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
     else
         USER_HOME=$HOME
     fi
-    EXPANDED_KEY_PATH="${FORGE_SSH_KEY_PATH/#\~/$USER_HOME}"
+    EXPANDED_KEY_PATH="${FORGE_SSH_KEY_PATH:-}"
+    EXPANDED_KEY_PATH="${EXPANDED_KEY_PATH/#\~/$USER_HOME}"
 
     # Read the SSH public key and inject it into the authorized_keys list of the user-data
     if [ -n "$EXPANDED_KEY_PATH" ] && [ -f "$EXPANDED_KEY_PATH" ]; then
@@ -166,7 +167,7 @@ EOF
     fi
 
     # Set the default login username
-    if [ -n "$FORGE_DEFAULT_USER" ]; then
+    if [ -n "${FORGE_DEFAULT_USER:-}" ]; then
         export FORGE_DEFAULT_USER
         yq_edit "$TEMP_DIR/user-data" '.users[0].name = env(FORGE_DEFAULT_USER)'
     fi
@@ -175,6 +176,15 @@ EOF
 # Actually creates and starts the virtual machine using libvirt
 launch_vm() {
     log_info "Launching VM $NEWNAME_FQDN with IP ${NEWIP}..."
+
+    if ! command -v ip >/dev/null 2>&1; then
+        log_err "The 'ip' command is required to validate bridge state."
+        exit 1
+    fi
+    if ! ip link show "$BRIDGE_IF" >/dev/null 2>&1; then
+        log_err "Bridge interface '$BRIDGE_IF' not found."
+        exit 1
+    fi
 
     # virt-install is the command-line tool for KVM/QEMU deployments
     virt-install --name "$NEWNAME_FQDN" \
@@ -213,7 +223,7 @@ main() {
     fi
 
     # Determine what the final VM username will be (useful for returning back to the CLI wrapper)
-    VM_USER="${FORGE_DEFAULT_USER}"
+    VM_USER="${FORGE_DEFAULT_USER:-}"
     if [ -z "$VM_USER" ]; then
         VM_USER=$(cat "$USER_DATA_FILE" | yq '.users[0].name')
     fi

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stop script execution immediately if any command fails
-set -e
+set -euo pipefail
 
 # Dynamically determine the directory where this script is located
 # This allows the script to be run from anywhere without breaking relative paths
@@ -17,8 +17,24 @@ mkdir -p "${SCRIPT_DIR}/config"
 # Define the path where we will save the environment variables
 ENV_FILE="${SCRIPT_DIR}/config/forge.env"
 
+validate_forge_env_file() {
+    local file="$1"
+    local line=""
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+="[^\`\$]*"$ ]]; then
+            return 1
+        fi
+    done < "$file"
+}
+
 # Load existing config values so reruns preserve prior settings as defaults
 if [ -f "$ENV_FILE" ]; then
+    if ! validate_forge_env_file "$ENV_FILE"; then
+        log_err "Invalid content in $ENV_FILE. Refusing to source it."
+        exit 1
+    fi
     source "$ENV_FILE"
 fi
 
@@ -90,6 +106,7 @@ fi
 # Write all collected variables into a persistent environment file atomically
 # This avoids partial writes if setup is interrupted.
 TMP_ENV_FILE=$(mktemp)
+trap 'rm -f "${TMP_ENV_FILE:-}"' EXIT
 cat > "$TMP_ENV_FILE" <<EOF
 FORGE_BRIDGE_IF="$FORGE_BRIDGE_IF"
 FORGE_SUBNET_SCAN="$FORGE_SUBNET_SCAN"

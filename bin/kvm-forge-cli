@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Find the directory of this script, which allows it to run from any location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,13 +48,21 @@ execute_provisioner() {
 # Repeatedly pings the new VM's IP address until it receives a response
 wait_for_vm() {
     log_info "Waiting for VM to respond to ping at $VMIP..."
-    
-    # An infinite loop that breaks only when the ping command succeeds
-    while true; do
+
+    local max_attempts="${MAX_WAIT_ATTEMPTS:-120}"
+    local attempt=1
+
+    while [ "$attempt" -le "$max_attempts" ]; do
         # -c 1 sends exactly one packet. We send the output to /dev/null to keep the terminal clean.
         ping -c 1 "$VMIP" &>/dev/null && break
         sleep 5
+        attempt=$((attempt + 1))
     done
+
+    if [ "$attempt" -gt "$max_attempts" ]; then
+        log_err "Timed out waiting for VM ping response at $VMIP"
+        exit 1
+    fi
 }
 
 # Removes old SSH signatures from the known_hosts file
@@ -75,30 +83,39 @@ wait_for_cloud_init() {
     # StrictHostKeyChecking=accept-new: Automatically accept the new fingerprint without prompting.
     # UserKnownHostsFile=/dev/null: Don't save the fingerprint (since VMs are volatile).
     # ConnectTimeout=5: Fail fast if the connection hangs.
-    SSH_OPTS="-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5"
+    local -a SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
     
     # If a custom SSH key was specified in setup, we inject it into the command
-    if [ -n "$FORGE_SSH_KEY_PATH" ]; then
+    if [ -n "${FORGE_SSH_KEY_PATH:-}" ]; then
+        local PRIVATE_KEY=""
         # Remove the .pub extension to get the path to the private key
         PRIVATE_KEY="${FORGE_SSH_KEY_PATH%.pub}"
         # Expand the tilde (~) shortcut to the user's actual home directory
         PRIVATE_KEY="${PRIVATE_KEY/#\~/$HOME}"
         if [ -f "$PRIVATE_KEY" ]; then
-            SSH_OPTS="$SSH_OPTS -i $PRIVATE_KEY"
+            SSH_OPTS+=(-i "$PRIVATE_KEY")
         fi
     fi
 
-    log_info "SSH Connection Command: ssh $SSH_OPTS $VMUSER@$VMIP"
+    log_info "SSH Connection Command: ssh ${SSH_OPTS[*]} $VMUSER@$VMIP"
     log_info "Waiting for SSH daemon to start..."
-    
-    # Loop until we can successfully execute the 'exit' command over SSH
-    while true; do
+
+    local max_attempts="${MAX_WAIT_ATTEMPTS:-120}"
+    local attempt=1
+
+    while [ "$attempt" -le "$max_attempts" ]; do
         # BatchMode=yes prevents SSH from ever prompting for a password, failing immediately instead.
-        if ssh $SSH_OPTS -o BatchMode=yes "$VMUSER@$VMIP" "exit" &>/dev/null; then
+        if ssh "${SSH_OPTS[@]}" -o BatchMode=yes "$VMUSER@$VMIP" "exit" &>/dev/null; then
             break
         fi
         sleep 5
+        attempt=$((attempt + 1))
     done
+
+    if [ "$attempt" -gt "$max_attempts" ]; then
+        log_err "Timed out waiting for SSH availability on $VMUSER@$VMIP"
+        exit 1
+    fi
 
     log_info "SSH is up! Streaming cloud-init logs until finished..."
     
@@ -106,7 +123,7 @@ wait_for_cloud_init() {
     # 1. 'tail -f' constantly prints new lines from the cloud-init log. We background this with '&' and save its Process ID ($!).
     # 2. 'cloud-init status --wait' blocks execution until cloud-init officially finishes setting up the OS.
     # 3. Once cloud-init finishes, we 'kill' the tail process using its Process ID so the script can exit cleanly.
-    ssh $SSH_OPTS "$VMUSER@$VMIP" "sudo tail -n +1 -f /var/log/cloud-init-output.log & TAIL_PID=\$!; cloud-init status --wait >/dev/null 2>&1; sudo kill \$TAIL_PID 2>/dev/null"
+    ssh "${SSH_OPTS[@]}" "$VMUSER@$VMIP" "TAIL_PID=''; trap '[[ -n \"\$TAIL_PID\" ]] && sudo kill \$TAIL_PID 2>/dev/null' EXIT; sudo tail -n +1 -f /var/log/cloud-init-output.log & TAIL_PID=\$!; cloud-init status --wait >/dev/null 2>&1"
 }
 
 # The main function orchestrates the flow
