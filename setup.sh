@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stop script execution immediately if any command fails
-set -e
+set -euo pipefail
 
 # Dynamically determine the directory where this script is located
 # This allows the script to be run from anywhere without breaking relative paths
@@ -17,6 +17,27 @@ mkdir -p "${SCRIPT_DIR}/config"
 # Define the path where we will save the environment variables
 ENV_FILE="${SCRIPT_DIR}/config/forge.env"
 
+validate_forge_env_file() {
+    local file="$1"
+    local line=""
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+="[^\`\$]*"$ ]]; then
+            return 1
+        fi
+    done < "$file"
+}
+
+# Load existing config values so reruns preserve prior settings as defaults
+if [ -f "$ENV_FILE" ]; then
+    if ! validate_forge_env_file "$ENV_FILE"; then
+        log_err "Invalid content in $ENV_FILE. Refusing to source it."
+        exit 1
+    fi
+    source "$ENV_FILE"
+fi
+
 # Display a stylized header using gum
 gum style --foreground 212 --border-foreground 212 --border double --align center --width 50 --margin "1 2" --padding "1 4" 'KVM-Forge Setup'
 
@@ -24,18 +45,18 @@ echo "We need to set up some global variables for your environment."
 echo ""
 
 # Gather network configuration from the user using interactive prompts.
-# If the user just presses Enter, it uses the default --value provided.
-FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "virbr0" --value "virbr0")
-FORGE_SUBNET_SCAN=$(gum input --prompt "Subnet Scan Range: " --placeholder "192.168.122.64/26" --value "192.168.122.64/26")
-FORGE_CIDR_SUFFIX=$(gum input --prompt "CIDR Suffix: " --placeholder "24" --value "24")
-FORGE_GATEWAY=$(gum input --prompt "Gateway IP: " --placeholder "192.168.122.1" --value "192.168.122.1")
-FORGE_DNS_SEARCH=$(gum input --prompt "DNS Search Domain: " --placeholder "forge.example" --value "forge.example")
-FORGE_DNS_SERVERS=$(gum input --prompt "DNS Servers (comma separated): " --placeholder "8.8.8.8,8.8.4.4" --value "8.8.8.8,8.8.4.4")
+# If the user just presses Enter, keep existing config values when present.
+FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "virbr0" --value "${FORGE_BRIDGE_IF:-virbr0}")
+FORGE_SUBNET_SCAN=$(gum input --prompt "Subnet Scan Range: " --placeholder "192.168.122.64/26" --value "${FORGE_SUBNET_SCAN:-192.168.122.64/26}")
+FORGE_CIDR_SUFFIX=$(gum input --prompt "CIDR Suffix: " --placeholder "24" --value "${FORGE_CIDR_SUFFIX:-24}")
+FORGE_GATEWAY=$(gum input --prompt "Gateway IP: " --placeholder "192.168.122.1" --value "${FORGE_GATEWAY:-192.168.122.1}")
+FORGE_DNS_SEARCH=$(gum input --prompt "DNS Search Domain: " --placeholder "forge.example" --value "${FORGE_DNS_SEARCH:-forge.example}")
+FORGE_DNS_SERVERS=$(gum input --prompt "DNS Servers (comma separated): " --placeholder "8.8.8.8,8.8.4.4" --value "${FORGE_DNS_SERVERS:-8.8.8.8,8.8.4.4}")
 
 # Gather base domain, default username, and timezone preferences
-FORGE_BASE_DOMAIN=$(gum input --prompt "Base Domain: " --placeholder "forge.example" --value "forge.example")
-FORGE_DEFAULT_USER=$(gum input --prompt "Default VM Username: " --placeholder "forge" --value "forge")
-FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., America/Los_Angeles): " --placeholder "America/Los_Angeles" --value "America/Los_Angeles")
+FORGE_BASE_DOMAIN=$(gum input --prompt "Base Domain: " --placeholder "forge.example" --value "${FORGE_BASE_DOMAIN:-forge.example}")
+FORGE_DEFAULT_USER=$(gum input --prompt "Default VM Username: " --placeholder "forge" --value "${FORGE_DEFAULT_USER:-forge}")
+FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., America/Los_Angeles): " --placeholder "America/Los_Angeles" --value "${FORGE_TIMEZONE:-America/Los_Angeles}")
 
 # Handle SSH key generation or selection
 echo ""
@@ -82,9 +103,11 @@ else
     FORGE_SSH_KEY_PATH="${KEY_PATH}.pub"
 fi
 
-# Write all collected variables into a persistent environment file
-# This file will be loaded by other scripts in the project
-cat > "$ENV_FILE" <<EOF
+# Write all collected variables into a persistent environment file atomically
+# This avoids partial writes if setup is interrupted.
+TMP_ENV_FILE=$(mktemp)
+trap 'rm -f "${TMP_ENV_FILE:-}"' EXIT
+cat > "$TMP_ENV_FILE" <<EOF
 FORGE_BRIDGE_IF="$FORGE_BRIDGE_IF"
 FORGE_SUBNET_SCAN="$FORGE_SUBNET_SCAN"
 FORGE_CIDR_SUFFIX="$FORGE_CIDR_SUFFIX"
@@ -99,6 +122,7 @@ EOF
 
 # Restrict permissions so only the file owner can read or write to it.
 # This protects sensitive information like the local network layout.
-chmod 600 "$ENV_FILE"
+install -m 600 "$TMP_ENV_FILE" "$ENV_FILE"
+rm -f "$TMP_ENV_FILE"
 
 log_info "Setup complete! Configuration saved to $ENV_FILE"

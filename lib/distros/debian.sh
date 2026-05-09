@@ -52,9 +52,9 @@ download_os_image() {
     export IMG_NAME OS_VARIANT
 
     LIBVIRT_IMG_PATH="/var/lib/libvirt/images/${IMG_NAME}"
-    if [ ! -f "$LIBVIRT_IMG_PATH" ]; then
-        log_info "Copying base image to libvirt images directory..."
-        sudo cp "$IMG_NAME" "$LIBVIRT_IMG_PATH"
-        sudo chmod 640 "$LIBVIRT_IMG_PATH"
+    # Keep the libvirt base image in sync if it is missing or differs from the validated source image.
+    if [ ! -f "$LIBVIRT_IMG_PATH" ] || ! cmp -s "$IMG_NAME" "$LIBVIRT_IMG_PATH"; then
+        log_info "Syncing base image to libvirt images directory..."
+        sudo install -m 640 "$IMG_NAME" "$LIBVIRT_IMG_PATH"
     fi
 }

@@ -14,7 +14,6 @@ prefer_fqdn_over_hostname: true
 timezone: PLACEHOLDER_TIMEZONE
 package_update: true
 package_upgrade: true
-
 packages:
   - htop
   - ncdu

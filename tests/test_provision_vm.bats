@@ -117,6 +117,13 @@ exit 0
 EOF
     chmod +x "${MOCK_DIR}/chmod"
 
+    # Mock install (used by distro image sync path)
+    cat << 'EOF' > "${MOCK_DIR}/install"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/install"
+
     download_os_image
     [ "$IMG_NAME" = "ubuntu-24.04-server-cloudimg-amd64.img" ]
     [ "$OS_VARIANT" = "ubuntu24.04" ]
@@ -157,6 +164,12 @@ EOF
 exit 0
 EOF
     chmod +x "${MOCK_DIR}/chmod"
+
+    cat << 'EOF' > "${MOCK_DIR}/install"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/install"
 
     download_os_image
     [ "$IMG_NAME" = "debian-12-generic-amd64.qcow2" ]
