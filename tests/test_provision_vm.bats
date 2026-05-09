@@ -121,3 +121,50 @@ EOF
     [ "$IMG_NAME" = "ubuntu-24.04-server-cloudimg-amd64.img" ]
     [ "$OS_VARIANT" = "ubuntu24.04" ]
 }
+
+@test "download_os_image selects Debian genericcloud image" {
+    export DISTRO="debian"
+    export VERSION="12"
+
+    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
+
+    cat << 'EOF' > "${MOCK_DIR}/wget"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/wget"
+
+    cat << 'EOF' > "${MOCK_DIR}/sha512sum"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/sha512sum"
+
+    cat << 'EOF' > "${MOCK_DIR}/grep"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/grep"
+
+    cat << 'EOF' > "${MOCK_DIR}/cp"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/cp"
+
+    cat << 'EOF' > "${MOCK_DIR}/chmod"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/chmod"
+
+    download_os_image
+    [ "$IMG_NAME" = "debian-12-generic-amd64.qcow2" ]
+    [ "$OS_VARIANT" = "debian12" ]
+}
+
+@test "debian interface name matches predictable virtio naming" {
+    source "${BATS_TEST_DIRNAME}/../lib/distros/debian.sh"
+
+    [ "$(get_interface_name)" = "enp1s0" ]
+}

@@ -6,7 +6,7 @@ DISTRO_VERSION_HINT="e.g. 11, 12, 13"
 
 # Returns the primary network interface name for Debian
 get_interface_name() {
-    echo "eth0"
+    echo "enp1s0"
 }
 
 # Maps version number to Debian codename
@@ -27,7 +27,7 @@ download_os_image() {
     CODENAME=$(get_debian_codename "$VERSION")
     
     # Configure variables specific to Debian cloud images
-    IMG_NAME="debian-${VERSION}-genericcloud-amd64.qcow2"
+    IMG_NAME="debian-${VERSION}-generic-amd64.qcow2"
     OS_VARIANT="debian${VERSION}"
     CHECKSUM_FILE="SHA512SUMS"
     
