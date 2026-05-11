@@ -5,9 +5,9 @@ users:
     shell: /bin/bash
     ssh_authorized_keys:
       - SSH_KEY_PLACEHOLDER
-hostname: blank
+hostname: PLACEHOLDER_HOSTNAME
 create_hostname_file: true
-fqdn: blank.beltec.us
+fqdn: PLACEHOLDER_FQDN
 prefer_fqdn_over_hostname: true
 timezone: PLACEHOLDER_TIMEZONE
 package_update: true

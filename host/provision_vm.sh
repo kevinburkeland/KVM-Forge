@@ -13,9 +13,9 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 CLOUD_INIT_DIR="${CLOUD_INIT_DIR:-$(realpath "${SCRIPT_DIR}/../cloud-init")}"
 
 # Set fallback variables in case the user hasn't run setup.sh to create forge.env
-BRIDGE_IF="${FORGE_BRIDGE_IF:-bridge0}"
-SUBNET_SCAN="${FORGE_SUBNET_SCAN:-172.26.70.0/24}"
-CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-16}"
+BRIDGE_IF="${FORGE_BRIDGE_IF:-virbr0}"
+SUBNET_SCAN="${FORGE_SUBNET_SCAN:-192.168.122.0/24}"
+CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-24}"
 
 
 
@@ -58,7 +58,7 @@ get_available_ip() {
 # Generates a unique, random hostname for the VM
 get_random_hostname() {
     # Get a list of all currently known virtual machines via libvirt.
-    mapfile -t name_array < <(sudo virsh list --all | grep beltec | awk '{ print $2 }' | cut -d. -f1)
+    mapfile -t name_array < <(sudo virsh list --all | grep forge.example | awk '{ print $2 }' | cut -d. -f1)
 
     # Pick a random name from names.txt until we find one that doesn't conflict with an existing VM.
     while true; do
@@ -70,7 +70,7 @@ get_random_hostname() {
 
     # Export both the short name and the Fully Qualified Domain Name (FQDN)
     export NEWNAME
-    export NEWNAME_FQDN="$NEWNAME.${FORGE_BASE_DOMAIN:-beltec.us}"
+    export NEWNAME_FQDN="$NEWNAME.${FORGE_BASE_DOMAIN:-forge.example}"
 }
 
 # Injects our dynamic IP, hostname, and SSH variables into the static cloud-init YAML templates

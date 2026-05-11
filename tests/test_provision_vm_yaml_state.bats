@@ -90,7 +90,7 @@ INNER
     make_mock "virsh" '
  echo " Id   Name               State"
  echo "----------------------------------"
- echo " 1    foo.beltec.us      running"
+ echo " 1    foo.forge.example      running"
  '
 
     # Deterministic shuf:
@@ -266,10 +266,10 @@ EOF
 }
 
 @test "get_random_hostname loops until unused name is found" {
-    export FORGE_BASE_DOMAIN="beltec.us"
+    export FORGE_BASE_DOMAIN="forge.example"
 
     get_random_hostname
 
     [ "$NEWNAME" = "qux" ]
-    [ "$NEWNAME_FQDN" = "qux.beltec.us" ]
+    [ "$NEWNAME_FQDN" = "qux.forge.example" ]
 }
