@@ -13,20 +13,28 @@ get_interface_name() {
 
 # ==========================================
 # Function: get_debian_codename
-# Mechanism: Uses a case statement to map the integer version to the string codename.
+# Mechanism: Uses yq to fetch the codename from the central manifest.yaml.
 # Infrastructure Logic: Debian repositories organize releases by codenames (e.g., bullseye, bookworm)
 # rather than numbers. This translation is required to build the correct download URL.
 # ==========================================
 get_debian_codename() {
-    case "$1" in
-        11) echo "bullseye" ;;
-        12) echo "bookworm" ;;
-        13) echo "trixie" ;;
-        *)
-            log_err "Unsupported Debian version: $1"
-            exit 1
-            ;;
-    esac
+    local version="$1"
+    local manifest_file="${FORGE_ROOT}/config/manifest.yaml"
+    
+    if [ ! -f "$manifest_file" ]; then
+        log_err "Manifest file not found at $manifest_file"
+        exit 1
+    fi
+    
+    local codename
+    codename=$(cat "$manifest_file" | yq ".distros.debian.codenames.\"${version}\"")
+    
+    if [ "$codename" == "null" ] || [ -z "$codename" ]; then
+        log_err "Unsupported Debian version or missing codename in manifest: $version"
+        exit 1
+    fi
+    
+    echo "$codename"
 }
 
 # ==========================================
