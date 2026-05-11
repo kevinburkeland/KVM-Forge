@@ -63,7 +63,7 @@ get_random_hostname() {
     # Pick a random name from names.txt until we find one that doesn't conflict with an existing VM.
     while true; do
         NEWNAME=$(shuf -n 1 "${CLOUD_INIT_DIR}/common/names.txt")
-        if [ ${#name_array[@]} -eq 0 ] || ! printf "%s\n" "${name_array[@]}" | grep -qw "$NEWNAME"; then
+        if [ ${#name_array[@]} -eq 0 ] || ! printf "%s\n" "${name_array[@]}" | grep -w "$NEWNAME" >/dev/null; then
             break
         fi
     done
