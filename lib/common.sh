@@ -17,7 +17,7 @@ COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FORGE_ROOT="$(dirname "$COMMON_DIR")"
 
 # If the user has completed the setup process and we are not running unit tests, load their environment variables
-if [ -z "$BATS_RUNNING" ] && [ -f "$FORGE_ROOT/config/forge.env" ]; then
+if [ -z "${BATS_RUNNING:-}" ] && [ -f "$FORGE_ROOT/config/forge.env" ]; then
     if ! validate_forge_env_file "$FORGE_ROOT/config/forge.env"; then
         echo "[ERROR] Invalid content in $FORGE_ROOT/config/forge.env. Refusing to source it." >&2
         exit 1
