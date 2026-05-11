@@ -75,7 +75,7 @@ check_and_install_dependencies() {
                         virt-install) sudo apt-get install -y virtinst ;;
                         nmap) sudo apt-get install -y nmap ;;
                         wget) sudo apt-get install -y wget ;;
-			libvirt-daemon) sudo apt-get install -y libvirt-daemon ;;
+			            libvirt-daemon) sudo apt-get install -y libvirt-daemon ;;
                         # Coreutils provides multiple basic binaries like shuf and md5sum
                         shuf|md5sum|sha256sum) sudo apt-get install -y coreutils ;;
                         *) log_err "Don't know how to install $cmd via apt."; exit 1 ;;
@@ -99,6 +99,7 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
                         virt-install) sudo dnf install -y virt-install ;;
                         nmap) sudo dnf install -y nmap ;;
                         wget) sudo dnf install -y wget ;;
+			            libvirt-daemon) sudo dnf install -y libvirt-daemon ;;
                         shuf|md5sum|sha256sum) sudo dnf install -y coreutils ;;
                         *) log_err "Don't know how to install $cmd via dnf."; exit 1 ;;
                     esac
