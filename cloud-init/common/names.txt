@@ -216,7 +216,6 @@ gallium
 indium
 iridium
 manganese
-molybdenum
 osmium
 palladium
 rhodium
