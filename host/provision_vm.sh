@@ -202,7 +202,7 @@ launch_vm() {
 # The main execution function
 main() {
     # Verify we have all required utilities installed
-    check_and_install_dependencies "yq" "virt-install" "nmap" "shuf" "wget" "md5sum" "sha256sum"
+    check_and_install_dependencies "yq" "virt-install" "nmap" "shuf" "wget" "md5sum" "sha256sum" "libvirt-daemon"
     
     # Parse CLI flags into variables (e.g., -d ubuntu -c 4)
     parse_vm_args "$@"

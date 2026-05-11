@@ -50,7 +50,12 @@ check_and_install_dependencies() {
     
     # Loop through each provided command and check if it's available in the system PATH
     for cmd in "${cmds[@]}"; do
-        if ! command -v "$cmd" &> /dev/null; then
+        local check_cmd="$cmd"
+        if [ "$cmd" = "libvirt-daemon" ]; then
+            check_cmd="libvirtd"
+        fi
+        
+        if ! command -v "$check_cmd" &> /dev/null; then
             MISSING_CMDS="$MISSING_CMDS $cmd"
         fi
     done

@@ -95,7 +95,7 @@ execute_cli() {
 }
 
 main() {
-    check_and_install_dependencies "gum"
+    check_and_install_dependencies "gum" "libvirt-daemon"
     
     gather_inputs
     show_summary_and_confirm
