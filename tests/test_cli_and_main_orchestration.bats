@@ -40,6 +40,7 @@ EOF
     make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"; "$@"'
     make_mock "yq" '
 if [[ "$1" == ".users[0].name" ]]; then
+  cat >/dev/null
   echo "null"
   exit 0
 fi
