@@ -43,7 +43,13 @@ log_err() {
 # Dependency Management
 # ==========================================
 
-# Checks if a list of commands exist, and attempts to install them if they don't
+# ==========================================
+# Function: check_and_install_dependencies
+# Mechanism: Iterates through an array of required commands and checks if they exist in the PATH.
+# Infrastructure Logic: If any are missing, it attempts to dynamically resolve whether the host
+# uses APT (Debian/Ubuntu) or DNF (RHEL/Alma) and automatically installs them. This makes the
+# script portable across different Linux host environments without manual setup.
+# ==========================================
 check_and_install_dependencies() {
     local cmds=("$@")
     local MISSING_CMDS=""
@@ -133,7 +139,13 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
 # VM Argument Parsing
 # ==========================================
 
-# Parses command-line arguments provided to the provisioning script
+# ==========================================
+# Function: parse_vm_args
+# Mechanism: Uses a 'while' loop and 'case' statements to parse command-line flags (-d, -p, etc.).
+# Infrastructure Logic: 'shift' is a shell built-in that moves the positional parameters left
+# (e.g., $2 becomes $1). This is the standard Unix way to consume flags and their associated values
+# iteratively until no arguments ($#) remain.
+# ==========================================
 parse_vm_args() {
     # Set default variables for the Virtual Machine if no flags are provided
     DISTRO="ubuntu"

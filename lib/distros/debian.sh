@@ -4,12 +4,22 @@
 DISTRO_DEFAULT_VERSION="12"
 DISTRO_VERSION_HINT="e.g. 11, 12, 13"
 
-# Returns the primary network interface name for Debian
+# ==========================================
+# Function: get_interface_name
+# Mechanism: Returns the standard string "enp1s0".
+# Networking Context: Like Ubuntu, Debian uses Predictable Network Interface Names
+# ensuring that the virtual NIC mapping remains stable across reboots.
+# ==========================================
 get_interface_name() {
     echo "enp1s0"
 }
 
-# Maps version number to Debian codename
+# ==========================================
+# Function: get_debian_codename
+# Mechanism: Uses a case statement to map the integer version to the string codename.
+# Infrastructure Logic: Debian repositories organize releases by codenames (e.g., bullseye, bookworm)
+# rather than numbers. This translation is required to build the correct download URL.
+# ==========================================
 get_debian_codename() {
     case "$1" in
         11) echo "bullseye" ;;
@@ -22,7 +32,13 @@ get_debian_codename() {
     esac
 }
 
-# Downloads and verifies the Debian cloud image
+# ==========================================
+# Function: download_os_image
+# Mechanism: Downloads the Debian qcow2 cloud image and its SHA512 checksum.
+# Infrastructure Logic: Uses 'sha512sum' to cryptographically verify the image's integrity.
+# SHA512 is stronger than MD5, making it practically impossible for an attacker to spoof
+# the image. Once verified, the image is staged in the libvirt directory for VM cloning.
+# ==========================================
 download_os_image() {
     CODENAME=$(get_debian_codename "$VERSION")
     

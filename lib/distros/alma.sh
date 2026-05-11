@@ -4,12 +4,24 @@
 DISTRO_DEFAULT_VERSION="10"
 DISTRO_VERSION_HINT="e.g. 9, 10"
 
-# Returns the primary network interface name for AlmaLinux
+# ==========================================
+# Function: get_interface_name
+# Mechanism: Returns the standard string "eth0".
+# Networking Context: AlmaLinux cloud images default to the legacy 'eth0' naming convention.
+# Because these VMs typically only have a single virtual NIC, the legacy naming is safe
+# and simplifies cloud-init network configuration.
+# ==========================================
 get_interface_name() {
     echo "eth0"
 }
 
-# Downloads and verifies the AlmaLinux cloud image
+# ==========================================
+# Function: download_os_image
+# Mechanism: Downloads the AlmaLinux GenericCloud image and its SHA256 checksum.
+# Infrastructure Logic: Verifies the integrity of the download using 'sha256sum'.
+# This prevents failed VM deployments caused by partially downloaded files. After verification,
+# it synchronizes the image to the local KVM storage pool (/var/lib/libvirt/images).
+# ==========================================
 download_os_image() {
     # Configure variables specific to AlmaLinux cloud images
     IMG_NAME="AlmaLinux-${VERSION}-GenericCloud-latest.x86_64.qcow2"
