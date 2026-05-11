@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Default version settings for Debian
-DISTRO_DEFAULT_VERSION="12"
-DISTRO_VERSION_HINT="e.g. 11, 12, 13"
 
 # ==========================================
 # Function: get_interface_name

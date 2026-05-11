@@ -14,8 +14,9 @@ setup() {
     CLI_LOG="$(mktemp)"
 
     # Build a sandbox layout so SCRIPT_DIR-relative paths in kvm-forge-tui remain valid.
-    mkdir -p "$TEST_ROOT/bin"
+    mkdir -p "$TEST_ROOT/bin" "$TEST_ROOT/config"
     ln -s "$REPO_ROOT/lib" "$TEST_ROOT/lib"
+    cp "$REPO_ROOT/config/manifest.yaml" "$TEST_ROOT/config/manifest.yaml"
     cp "$REPO_ROOT/bin/kvm-forge-tui" "$TEST_ROOT/bin/kvm-forge-tui"
     chmod +x "$TEST_ROOT/bin/kvm-forge-tui"
 
@@ -74,6 +75,21 @@ exit 0
 EOF
         chmod +x "$MOCK_DIR/$cmd"
     done
+
+    # Mock yq to bypass snap confinement restrictions in /tmp
+    cat > "$MOCK_DIR/yq" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == ".distros | keys | .[]" ]]; then
+    echo -e "ubuntu\nalma\ndebian"
+elif [[ "$1" == *".default_version" ]]; then
+    if [[ "$1" == *"ubuntu"* ]]; then echo "24.04"; elif [[ "$1" == *"alma"* ]]; then echo "10"; else echo "12"; fi
+elif [[ "$1" == *".supported_versions"* ]]; then
+    echo "24.04"
+elif [[ "$1" == *".profiles | .[]" ]]; then
+    echo -e "base\npython\ndocker"
+fi
+EOF
+    chmod +x "$MOCK_DIR/yq"
 }
 
 teardown() {
@@ -153,6 +169,10 @@ n
 EOF
 
     run "$TEST_ROOT/bin/kvm-forge-tui"
+    
+    if [ "$status" -ne 0 ]; then
+        echo "TUI Output: $output"
+    fi
 
     [ "$status" -eq 0 ]
     [ ! -s "$CLI_LOG" ]

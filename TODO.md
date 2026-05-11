@@ -58,6 +58,7 @@ A running list of planned improvements and additions.
 ## 📦 Infrastructure / Misc
 
 - [x] Package `setup.sh` dependency checks into `lib/common.sh`
+- [x] Refactor TUI and CLI menus to use a dynamic, centralized `manifest.yaml`
 - [ ] Add a `kvm-forge-destroy` script to cleanly remove a VM and its disk
 - [ ] Support reading default flag values from `config/forge.env`
 - [ ] GitHub Actions CI to run bats test suite on push

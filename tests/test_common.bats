@@ -35,11 +35,11 @@ setup() {
 @test "parse_vm_args parses valid overrides correctly" {
     unset DISTRO VERSION PROFILE VCPU MEMORY DISK_SIZE
     
-    parse_vm_args -d alma -v 9 -p web -c 8 -m 16384 -s 50
+    parse_vm_args -d alma -v 9 -p python -c 8 -m 16384 -s 50
     
     [ "$DISTRO" = "alma" ]
     [ "$VERSION" = "9" ]
-    [ "$PROFILE" = "web" ]
+    [ "$PROFILE" = "python" ]
     [ "$VCPU" -eq 8 ]
     [ "$MEMORY" -eq 16384 ]
     [ "$DISK_SIZE" -eq 50 ]

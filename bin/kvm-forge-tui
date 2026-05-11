@@ -14,27 +14,30 @@ gather_inputs() {
         'KVM-Forge Provisioner' "${FORGE_BASE_DOMAIN:-localhost}"
 
     # ── Distro ──────────────────────────────────────────────────────────────────
-    gum style --foreground 99 --bold "Select a distro:"
-    DISTRO=$(gum choose --selected "ubuntu" "ubuntu" "alma" "debian")
-
-    # ── Version ─────────────────────────────────────────────────────────────────
-    DISTRO_MODULE="${SCRIPT_DIR}/../lib/distros/${DISTRO}.sh"
-    if [ -f "$DISTRO_MODULE" ]; then
-        source "$DISTRO_MODULE"
-        DEFAULT_VERSION="$DISTRO_DEFAULT_VERSION"
-        VERSION_HINT="$DISTRO_VERSION_HINT"
-    else
-        gum style --foreground 196 "Error: Module for $DISTRO not found."
+    MANIFEST_FILE="${SCRIPT_DIR}/../config/manifest.yaml"
+    if [ ! -f "$MANIFEST_FILE" ]; then
+        gum style --foreground 196 "Error: Manifest file not found at $MANIFEST_FILE"
         exit 1
     fi
+
+    gum style --foreground 99 --bold "Select a distro:"
+    AVAILABLE_DISTROS=$(cat "$MANIFEST_FILE" | yq '.distros | keys | .[]')
+    mapfile -t DISTRO_ARRAY <<< "$AVAILABLE_DISTROS"
+    DISTRO=$(gum choose --selected "ubuntu" "${DISTRO_ARRAY[@]}")
+
+    # ── Version ─────────────────────────────────────────────────────────────────
+    DEFAULT_VERSION=$(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.default_version")
+    VERSION_HINT="e.g. $(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.supported_versions | join(\", \")")"
 
     gum style --foreground 99 --bold "Distro version (${VERSION_HINT}):"
     VERSION=$(gum input --placeholder "$DEFAULT_VERSION" --value "$DEFAULT_VERSION")
     VERSION="${VERSION:-$DEFAULT_VERSION}"
 
     # ── Profile ─────────────────────────────────────────────────────────────────
-    gum style --foreground 99 --bold "Select a profile:"
-    PROFILE=$(gum choose --selected "base" "base" "docker" "python")
+    gum style --foreground 99 --bold "Select a profile for $DISTRO:"
+    VALID_PROFILES=$(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.profiles | .[]")
+    mapfile -t PROFILE_ARRAY <<< "$VALID_PROFILES"
+    PROFILE=$(gum choose --selected "base" "${PROFILE_ARRAY[@]}")
 
     # ── vCPUs ───────────────────────────────────────────────────────────────────
     gum style --foreground 99 --bold "Number of vCPUs:"

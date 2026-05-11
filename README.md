@@ -10,6 +10,7 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 - **Dynamic Thematic VM Naming:** Automatically assigns hostnames from curated theme-based name lists and avoids collisions with existing VM names.
 - **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, and `python`.
 - **Interactive TUI:** Includes both a `setup.sh` configuration wizard and a `kvm-forge-tui` provisioner, both powered by `gum`, for a guided Terminal UI experience without needing to memorize flags.
+- **Manifest-Driven Architecture:** Uses a central `manifest.yaml` to dynamically generate TUI menus, define default OS versions, and strictly enforce which software profiles are supported by each distribution.
 - **Hardened Runtime Behavior:** Includes bounded SSH/ping wait loops, bridge preflight checks, and stricter shell safety defaults in entrypoints.
 - **Educational Focus:** The repository is heavily documented with in-line contextual explanations of networking concepts (DNS, bridging, subnetting) and infrastructure logic (cloud-init, KVM), making it an excellent learning tool for IT and Networking students.
 - **Standardized Portability:** Works out-of-the-box with generic `virt-manager` defaults (`virbr0`, `192.168.122.0/24`, `forge.example`) to ensure maximum compatibility and predictability across different Linux host environments.

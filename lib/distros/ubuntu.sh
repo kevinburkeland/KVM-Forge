@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Default version settings for Ubuntu
-DISTRO_DEFAULT_VERSION="24.04"
-DISTRO_VERSION_HINT="e.g. 22.04, 24.04"
 
 # ==========================================
 # Function: get_interface_name

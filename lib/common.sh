@@ -188,9 +188,14 @@ parse_vm_args() {
                 shift ;;
             -h|--help)
                 # Display usage instructions
+                local manifest_file="${FORGE_ROOT}/config/manifest.yaml"
+                local available_distros="ubuntu, alma, debian"
+                if [ -f "$manifest_file" ] && command -v yq >/dev/null; then
+                    available_distros=$(cat "$manifest_file" | yq '.distros | keys | join(", ")')
+                fi
                 echo "Usage: $0 [OPTIONS]"
                 echo "Options:"
-                echo "  -d, --distro      Distro to use (ubuntu, alma, or debian, default: ubuntu)"
+                echo "  -d, --distro      Distro to use ($available_distros, default: ubuntu)"
                 echo "  -v, --version     Distro version (e.g. 24.04, 10, 12)"
                 echo "  -p, --profile     Profile to use (default: base)"
                 echo "  -c, --cpus        Number of vCPUs (default: 4)"
@@ -204,15 +209,31 @@ parse_vm_args() {
         shift
     done
 
-    # If the user didn't specify an OS version, use the predefined defaults
+    MANIFEST_FILE="${FORGE_ROOT}/config/manifest.yaml"
+    if [ ! -f "$MANIFEST_FILE" ]; then
+        log_err "Manifest file not found at $MANIFEST_FILE"
+        exit 1
+    fi
+
+    # Validate that the selected distro exists in the manifest
+    if ! cat "$MANIFEST_FILE" | yq ".distros | has(\"$DISTRO\")" | grep -q "true"; then
+        log_err "Unknown distro: $DISTRO"
+        exit 1
+    fi
+
+    # Validate that the selected profile exists for this distro
+    if ! cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.profiles | contains([\"$PROFILE\"])" | grep -q "true"; then
+        log_err "Profile '$PROFILE' is not supported for distro '$DISTRO'. Supported: $(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.profiles | join(\", \")")"
+        exit 1
+    fi
+
+    # If the user didn't specify an OS version, use the predefined default from the manifest
     if [ -z "$VERSION" ]; then
-        DISTRO_MODULE="${FORGE_ROOT}/lib/distros/${DISTRO}.sh"
-        if [ -f "$DISTRO_MODULE" ]; then
-            source "$DISTRO_MODULE"
-            VERSION="$DISTRO_DEFAULT_VERSION"
-        else
-            log_err "Unknown distro: $DISTRO"
-            exit 1
+        VERSION=$(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.default_version")
+    else
+        # Optional: Validate the provided version
+        if ! cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.supported_versions | contains([\"$VERSION\"])" | grep -q "true"; then
+            log_info "Warning: Version $VERSION is not explicitly supported in the manifest for $DISTRO."
         fi
     fi
 
