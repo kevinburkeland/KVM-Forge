@@ -17,26 +17,6 @@ mkdir -p "${SCRIPT_DIR}/config"
 # Define the path where we will save the environment variables
 ENV_FILE="${SCRIPT_DIR}/config/forge.env"
 
-validate_forge_env_file() {
-    local file="$1"
-    local line=""
-
-    while IFS= read -r line || [ -n "$line" ]; do
-        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+="[^\`\$]*"$ ]]; then
-            return 1
-        fi
-    done < "$file"
-}
-
-# Load existing config values so reruns preserve prior settings as defaults
-if [ -f "$ENV_FILE" ]; then
-    if ! validate_forge_env_file "$ENV_FILE"; then
-        log_err "Invalid content in $ENV_FILE. Refusing to source it."
-        exit 1
-    fi
-    source "$ENV_FILE"
-fi
 
 # Display a stylized header using gum
 gum style --foreground 212 --border-foreground 212 --border double --align center --width 50 --margin "1 2" --padding "1 4" 'KVM-Forge Setup'

@@ -68,16 +68,14 @@ check_and_install_dependencies() {
                 for cmd in $MISSING_CMDS; do
                     case $cmd in
                         gum)
-                            # 'gum' requires adding a custom third-party repository
-                            sudo mkdir -p /etc/apt/keyrings
-                            curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-                            echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
+                            # 'gum' install with apt
                             sudo apt-get update && sudo apt-get install -y gum
                             ;;
                         yq) sudo snap install yq || sudo apt-get install -y yq ;;
                         virt-install) sudo apt-get install -y virtinst ;;
                         nmap) sudo apt-get install -y nmap ;;
                         wget) sudo apt-get install -y wget ;;
+			libvirt-daemon) sudo apt-get install -y libvirt-daemon ;;
                         # Coreutils provides multiple basic binaries like shuf and md5sum
                         shuf|md5sum|sha256sum) sudo apt-get install -y coreutils ;;
                         *) log_err "Don't know how to install $cmd via apt."; exit 1 ;;
