@@ -21,4 +21,4 @@ jobs:
           sudo apt-get install -y bats
 
       - name: Run tests via run-tests.sh
-        run: ./tests/run-tests.sh
+        run: ./KVM-Forge/tests/run-tests.sh
