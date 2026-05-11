@@ -6,7 +6,7 @@ validate_forge_env_file() {
 
     while IFS= read -r line || [ -n "$line" ]; do
         [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+="[^\`\$]*"$ ]]; then
+        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+=\"[^\`\$]*\"$ ]]; then
             return 1
         fi
     done < "$file"
