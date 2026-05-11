@@ -6,6 +6,10 @@ distros:
   debian:
     default_version: "13"
     supported_versions: ["11", "12", "13"]
+    codenames:
+      "11": "bullseye"
+      "12": "bookworm"
+      "13": "trixie"
     profiles: ["base", "docker", "python"]
   alma:
     default_version: "10"
