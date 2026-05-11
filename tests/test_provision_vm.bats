@@ -34,7 +34,7 @@ EOF
 #!/bin/bash
 echo " Id   Name               State"
 echo "----------------------------------"
-echo " 1    foo.beltec.us      running"
+echo " 1    foo.forge.example      running"
 EOF
     chmod +x "${MOCK_DIR}/virsh"
 
@@ -66,15 +66,15 @@ teardown() {
     # 192.168.1.1 is marked as UP
     # Available should be 192.168.1.2 or 192.168.1.3
     [[ "$NEWIP" == "192.168.1.2" || "$NEWIP" == "192.168.1.3" ]]
-    [[ "$NEWIP_YAML" == "${NEWIP}/16" ]]
+    [[ "$NEWIP_YAML" == "${NEWIP}/24" ]]
 }
 
 @test "get_random_hostname gets a valid unused name" {
-    export FORGE_BASE_DOMAIN="beltec.us"
+    export FORGE_BASE_DOMAIN="forge.example"
     get_random_hostname
     
     [[ "$NEWNAME" == "baz" || "$NEWNAME" == "qux" ]]
-    [[ "$NEWNAME_FQDN" == "${NEWNAME}.beltec.us" ]]
+    [[ "$NEWNAME_FQDN" == "${NEWNAME}.forge.example" ]]
 }
 
 @test "download_os_image sets correct variables for ubuntu" {
