@@ -26,20 +26,45 @@ echo ""
 
 # Gather network configuration from the user using interactive prompts.
 # If the user just presses Enter, keep existing config values when present.
+echo -e "\n--- Network Topology ---"
+echo "KVM uses a virtual network switch (a bridge) to connect your VMs together and out to the internet."
+echo "The Bridge Interface Name (usually virbr0) is the name of this virtual switch on your host machine."
+echo "The Subnet Scan Range defines the pool of IP addresses KVM-Forge is allowed to assign."
+echo "The CIDR Suffix defines the subnet mask length (e.g., 24 means 255.255.255.0)."
+echo "By setting the subnet scan range, you can ensure that KVM-Forge does not assign IP addresses that are already in use by other devices on your network."
+echo "You can even set it to a small range, such as .64/26, to limit the number of IP addresses that KVM-Forge can assign."
 FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "virbr0" --value "${FORGE_BRIDGE_IF:-virbr0}")
 FORGE_SUBNET_SCAN=$(gum input --prompt "Subnet Scan Range: " --placeholder "192.168.122.64/26" --value "${FORGE_SUBNET_SCAN:-192.168.122.64/26}")
 FORGE_CIDR_SUFFIX=$(gum input --prompt "CIDR Suffix: " --placeholder "24" --value "${FORGE_CIDR_SUFFIX:-24}")
+
+echo -e "\n--- Routing & DNS ---"
+echo "These settings are injected into the VM so it knows how to route traffic and resolve names."
+echo "Gateway IP: The router address on the virtual network (usually the host machine's virtual IP: 192.168.122.1)."
+echo "DNS Search Domain: Appended to short hostnames (e.g., 'ping server' becomes 'ping server.forge.example')."
+echo "DNS Servers: The upstream resolvers used to reach the public internet (e.g., Google DNS)."
 FORGE_GATEWAY=$(gum input --prompt "Gateway IP: " --placeholder "192.168.122.1" --value "${FORGE_GATEWAY:-192.168.122.1}")
 FORGE_DNS_SEARCH=$(gum input --prompt "DNS Search Domain: " --placeholder "forge.example" --value "${FORGE_DNS_SEARCH:-forge.example}")
 FORGE_DNS_SERVERS=$(gum input --prompt "DNS Servers (comma separated): " --placeholder "8.8.8.8,8.8.4.4" --value "${FORGE_DNS_SERVERS:-8.8.8.8,8.8.4.4}")
 
 # Gather base domain, default username, and timezone preferences
+echo -e "\n--- System Preferences ---"
+echo "Base Domain: The root domain name applied to all your VMs for local DNS consistency."
+echo "Default VM Username: The unprivileged user created automatically via cloud-init."
+echo "Timezone: Ensures log timestamps and system clocks are synchronized across your lab."
 FORGE_BASE_DOMAIN=$(gum input --prompt "Base Domain: " --placeholder "forge.example" --value "${FORGE_BASE_DOMAIN:-forge.example}")
 FORGE_DEFAULT_USER=$(gum input --prompt "Default VM Username: " --placeholder "forge" --value "${FORGE_DEFAULT_USER:-forge}")
 FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., America/Los_Angeles): " --placeholder "America/Los_Angeles" --value "${FORGE_TIMEZONE:-America/Los_Angeles}")
 
-# Handle SSH key generation or selection
-echo ""
+# ==========================================
+# Networking Context: SSH Key Generation
+# Mechanism: Generates an ED25519 SSH keypair if the user doesn't use an existing one.
+# Networking Context: ED25519 is an elliptical curve cryptography standard. It is highly
+# preferred over older RSA keys because it offers stronger security with significantly 
+# shorter keys, resulting in faster cryptographic operations during SSH handshakes.
+# ==========================================
+echo -e "\n--- SSH Authentication ---"
+echo "To enable secure, passwordless automation, KVM-Forge injects an SSH public key into every new VM."
+echo "You can provide an existing key, or generate a fresh, KVM-specific ED25519 cryptographic keypair."
 echo "Select how you want to handle SSH keys for the VMs:"
 SSH_CHOICE=$(gum choose "Use existing public key" "Generate a new ED25519 keypair")
 
@@ -83,8 +108,11 @@ else
     FORGE_SSH_KEY_PATH="${KEY_PATH}.pub"
 fi
 
-# Write all collected variables into a persistent environment file atomically
-# This avoids partial writes if setup is interrupted.
+# ==========================================
+# Infrastructure Logic: Atomic Environment Writes
+# Mechanism: Explains how 'mktemp' and 'trap' ensure atomic file writes, preventing
+# corrupted environment configurations if the script exits unexpectedly.
+# ==========================================
 TMP_ENV_FILE=$(mktemp)
 trap 'rm -f "${TMP_ENV_FILE:-}"' EXIT
 cat > "$TMP_ENV_FILE" <<EOF

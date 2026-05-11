@@ -1,4 +1,12 @@
 #cloud-config
+
+# ==========================================
+# Infrastructure Logic: User Provisioning
+# Mechanism: Creates the default unprivileged user and disables root SSH access.
+# Networking Context: Injects the ED25519 public key generated during setup.sh directly
+# into the new user's authorized_keys. This enables seamless, passwordless SSH access
+# from the host immediately after boot.
+# ==========================================
 users:
   - name: PLACEHOLDER_USER
     sudo: ALL=(ALL) NOPASSWD:ALL
@@ -7,6 +15,13 @@ users:
       - SSH_KEY_PLACEHOLDER
 disable_root: true
 ssh_pwauth: false
+
+# ==========================================
+# Infrastructure Logic: Hostname & DNS
+# Standardization: Enforces the 'forge.example' fully qualified domain name (FQDN).
+# Networking Context: Setting the correct FQDN ensures that local DNS resolvers 
+# correctly route traffic to this specific VM within the lab network.
+# ==========================================
 hostname: PLACEHOLDER_HOSTNAME
 create_hostname_file: true
 fqdn: PLACEHOLDER_FQDN
@@ -14,6 +29,14 @@ prefer_fqdn_over_hostname: true
 timezone: PLACEHOLDER_TIMEZONE
 package_update: true
 package_upgrade: true
+
+# ==========================================
+# Infrastructure Logic: Core Packages
+# Mechanism: Installs essential management tools via the OS package manager (apt).
+# Networking Context: The 'qemu-guest-agent' is critical. It acts as a daemon inside the VM 
+# that communicates securely with the KVM hypervisor on the host, allowing the host to 
+# query the VM's active IP address and gracefully shut it down.
+# ==========================================
 packages:
   - htop
   - ncdu

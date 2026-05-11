@@ -19,7 +19,13 @@ CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-24}"
 
 
 
-# Finds an unused IP address on the local network for the new VM
+# ==========================================
+# Function: get_available_ip
+# Mechanism: Uses 'nmap' to scan the designated subnet and finds an IP that isn't currently responding.
+# Networking Context: It first does a List Scan (-sL) to generate all possible IPs in the CIDR block,
+# removes the network (.0) and broadcast (.255) addresses, then does a Ping Sweep (-sn) to find
+# active hosts. Finally, it picks a random IP from the remaining unused pool to avoid conflicts.
+# ==========================================
 get_available_ip() {
     # Perform a fast List Scan (-sL) with nmap to list all theoretically possible IPs in the subnet.
     # mapfile stores the output directly into a bash array called 'all_ips'.
@@ -55,7 +61,13 @@ get_available_ip() {
     export NEWIP="$AVAILABLE_IP"
 }
 
-# Generates a unique, random hostname for the VM
+# ==========================================
+# Function: get_random_hostname
+# Mechanism: Randomly selects a name from names.txt and verifies it doesn't already exist.
+# Standardization: Appends the 'forge.example' base domain to the chosen name. This ensures
+# all VMs in the lab adhere to the same Fully Qualified Domain Name (FQDN) structure, 
+# making DNS configuration and inter-VM networking predictable.
+# ==========================================
 get_random_hostname() {
     # Get a list of all currently known virtual machines via libvirt.
     mapfile -t name_array < <(sudo virsh list --all | grep forge.example | awk '{ print $2 }' | cut -d. -f1)
@@ -73,7 +85,14 @@ get_random_hostname() {
     export NEWNAME_FQDN="$NEWNAME.${FORGE_BASE_DOMAIN:-forge.example}"
 }
 
-# Injects our dynamic IP, hostname, and SSH variables into the static cloud-init YAML templates
+# ==========================================
+# Function: prepare_cloud_init_config
+# Mechanism: Stages the static YAML templates into a temporary directory and dynamically injects values.
+# Infrastructure Logic: Uses 'yq' (a command-line YAML processor) to surgically insert the
+# chosen IP, hostname, and SSH keys into the templates without breaking the YAML structure.
+# Networking Context: Specifically overwrites the network-config with the correct default gateway,
+# DNS search domain, and nameservers required for the VM to route traffic out to the internet.
+# ==========================================
 prepare_cloud_init_config() {
     local user_data_file="$1"
     
@@ -173,7 +192,13 @@ EOF
     fi
 }
 
-# Actually creates and starts the virtual machine using libvirt
+# ==========================================
+# Function: launch_vm
+# Mechanism: Uses the 'virt-install' command to actually spin up the KVM virtual machine.
+# Infrastructure Logic: It attaches the cloud-init files (user-data, meta-data, network-config)
+# as a virtual CD-ROM. When the Linux kernel boots, the cloud-init daemon mounts this CD-ROM,
+# reads the configuration, and automatically sets up the OS without any manual intervention.
+# ==========================================
 launch_vm() {
     log_info "Launching VM $NEWNAME_FQDN with IP ${NEWIP}..."
 

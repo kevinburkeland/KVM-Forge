@@ -4,12 +4,25 @@
 DISTRO_DEFAULT_VERSION="24.04"
 DISTRO_VERSION_HINT="e.g. 22.04, 24.04"
 
-# Returns the primary network interface name for Ubuntu
+# ==========================================
+# Function: get_interface_name
+# Mechanism: Returns the hardcoded string "enp1s0" for the calling script to use.
+# Networking Context: Modern Ubuntu versions use Predictable Network Interface Names
+# (like enp1s0) based on hardware topology, rather than the legacy eth0 which could
+# randomly swap between physical ports on reboot.
+# ==========================================
 get_interface_name() {
     echo "enp1s0"
 }
 
-# Downloads and verifies the Ubuntu cloud image
+# ==========================================
+# Function: download_os_image
+# Mechanism: Downloads the Ubuntu cloud image and its cryptographic checksum.
+# Infrastructure Logic: Validates the image using 'md5sum' against the official hashes.
+# If the hash doesn't match, it deletes the corrupt file and redownloads it. This
+# protects the lab against both corrupted downloads and supply-chain attacks. Once verified,
+# it copies the image to the secure KVM image directory (/var/lib/libvirt/images).
+# ==========================================
 download_os_image() {
     # Configure variables specific to Ubuntu cloud images
     IMG_NAME="ubuntu-${VERSION}-server-cloudimg-amd64.img"
