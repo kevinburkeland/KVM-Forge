@@ -1,0 +1,13 @@
+distros:
+  ubuntu:
+    default_version: "24.04"
+    supported_versions: ["22.04", "24.04", "25.10"]
+    profiles: ["base", "docker", "python"]
+  debian:
+    default_version: "13"
+    supported_versions: ["11", "12", "13"]
+    profiles: ["base", "docker", "python"]
+  alma:
+    default_version: "10"
+    supported_versions: ["8", "9", "10"]
+    profiles: ["base", "docker", "python"]

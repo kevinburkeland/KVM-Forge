@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Default version settings for AlmaLinux
-DISTRO_DEFAULT_VERSION="10"
-DISTRO_VERSION_HINT="e.g. 9, 10"
 
 # ==========================================
 # Function: get_interface_name
