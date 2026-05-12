@@ -1,5 +1,8 @@
 # KVM-Forge
 
+[![CI](https://github.com/kevinburkeland/KVM-Forge/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinburkeland/KVM-Forge/actions/workflows/ci.yml)
+
+
 KVM-Forge is an automated, highly-modular provisioning system for creating and managing KVM virtual machines. Designed for local infrastructure and homelabs, it provides a simple CLI framework that supports multiple Linux distributions (Ubuntu, AlmaLinux) and allows you to rapidly deploy VMs with pre-configured software stacks via `cloud-init`.
 
 ## ✨ Features
