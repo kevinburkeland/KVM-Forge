@@ -60,7 +60,7 @@ bin/kvm-forge-cli --distro alma --profile docker --cpus 4 --memory 8192 --disk-s
 **Available Flags:**
 
 - `-d, --distro` : Distro to use (`ubuntu`, `debian`, or `alma`, default: `ubuntu`)
-- `-v, --version` : Distro version (default: `24.04` for ubuntu, `12` for debian, `10` for alma)
+- `-v, --version` : Distro version (default: `24.04` for ubuntu, `13` for debian, `10` for alma)
 - `-p, --profile` : Software profile to use (`base`, `docker`, `python`)
 - `-c, --cpus` : Number of vCPUs (default: 4)
 - `-m, --memory` : Memory in MB (default: 8192)
