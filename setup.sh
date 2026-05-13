@@ -53,7 +53,11 @@ echo "Default VM Username: The unprivileged user created automatically via cloud
 echo "Timezone: Ensures log timestamps and system clocks are synchronized across your lab."
 FORGE_BASE_DOMAIN=$(gum input --prompt "Base Domain: " --placeholder "forge.example" --value "${FORGE_BASE_DOMAIN:-forge.example}")
 FORGE_DEFAULT_USER=$(gum input --prompt "Default VM Username: " --placeholder "forge" --value "${FORGE_DEFAULT_USER:-forge}")
-FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., America/Los_Angeles): " --placeholder "America/Los_Angeles" --value "${FORGE_TIMEZONE:-America/Los_Angeles}")
+# Auto-detect local timezone to suggest on initial run
+DETECTED_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || readlink /etc/localtime | awk -F'/zoneinfo/' '{print $2}' || echo "GMT")
+[ -z "$DETECTED_TZ" ] && DETECTED_TZ="GMT"
+
+FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., $DETECTED_TZ): " --placeholder "$DETECTED_TZ" --value "${FORGE_TIMEZONE:-$DETECTED_TZ}")
 
 # ==========================================
 # Networking Context: SSH Key Generation
