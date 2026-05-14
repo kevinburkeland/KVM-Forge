@@ -21,7 +21,7 @@ ENV_FILE="${SCRIPT_DIR}/config/forge.env"
 # Display a stylized header using gum
 gum style --foreground 212 --border-foreground 212 --border double --align center --width 50 --margin "1 2" --padding "1 4" 'KVM-Forge Setup'
 
-echo "We need to set up some global variables for your environment."
+echo "We need to configure some global variables for your environment."
 echo ""
 
 # Gather network configuration from the user using interactive prompts.
@@ -30,7 +30,7 @@ echo -e "\n--- Network Topology ---"
 echo "KVM uses a virtual network switch (a bridge) to connect your VMs together and out to the internet."
 echo "The Bridge Interface Name (usually virbr0) is the name of this virtual switch on your host machine."
 echo "The Subnet Scan Range defines the pool of IP addresses KVM-Forge is allowed to assign."
-echo "The CIDR Suffix defines the subnet mask length (e.g., 24 means 255.255.255.0)."
+echo "The CIDR Suffix defines the subnet mask length (e.g., leave as 24 for standard home networks)."
 echo "By setting the subnet scan range, you can ensure that KVM-Forge does not assign IP addresses that are already in use by other devices on your network."
 echo "You can even set it to a small range, such as .64/26, to limit the number of IP addresses that KVM-Forge can assign."
 FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "virbr0" --value "${FORGE_BRIDGE_IF:-virbr0}")
@@ -68,7 +68,7 @@ FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., $DETECTED_TZ): " --placehol
 # ==========================================
 echo -e "\n--- SSH Authentication ---"
 echo "To enable secure, passwordless automation, KVM-Forge injects an SSH public key into every new VM."
-echo "You can provide an existing key, or generate a fresh, KVM-specific ED25519 cryptographic keypair."
+echo "You can provide an existing key, or generate a fresh, secure key specifically for KVM."
 echo "Select how you want to handle SSH keys for the VMs:"
 SSH_CHOICE=$(gum choose "Use existing public key" "Generate a new ED25519 keypair")
 
@@ -97,7 +97,7 @@ else
         # Ask for confirmation before destroying the old key
         if gum confirm "Do you want to overwrite it?"; then
             rm -f "$KEY_PATH" "${KEY_PATH}.pub"
-            # Generate a new ED25519 keypair with no password (-N "") so automation works seamlessly
+            # Generate a new ED25519 keypair with no password (-N "") so automation works efficiently
             ssh-keygen -t ed25519 -f "$KEY_PATH" -N "" -q
             log_info "Generated new key pair at $KEY_PATH"
         else

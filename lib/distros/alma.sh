@@ -38,7 +38,7 @@ download_os_image() {
         rm -f "$IMG_NAME"
         wget -q "https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/$IMG_NAME"
         if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha256sum --status -c -; then
-            log_err "Something is fishy with the mirror, SHA256 still mismatches after redownload."
+            log_err "The image verification failed due to an issue with the mirror or file."
             exit 1
         fi
     fi

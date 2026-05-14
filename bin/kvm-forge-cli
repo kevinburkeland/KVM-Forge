@@ -12,7 +12,7 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 # ==========================================
 # Function: execute_provisioner
 # Mechanism: Calls the underlying provision_vm.sh script and captures its output.
-# Infrastructure Logic: Since provision_vm.sh handles the heavy lifting of libvirt and 
+# Infrastructure Logic: Since provision_vm.sh executes the core provisioning logic of libvirt and 
 # cloud-init, this CLI script acts as a wrapper. It captures the final output lines
 # to learn the new VM's Name, IP, and Username for subsequent connection attempts.
 # ==========================================
