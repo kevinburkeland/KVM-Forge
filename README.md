@@ -7,7 +7,7 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 
 ## ✨ Features
 
-- **Multi-Distro Support:** Seamlessly deploy Ubuntu, Debian, and AlmaLinux, automatically handling OS-specific quirks like predictable network interface names and checksum algorithms.
+- **Multi-Distro Support:** Seamlessly deploy Ubuntu, Debian, and AlmaLinux, automatically handling OS-specific configurations like predictable network interface names and checksum algorithms.
 - **Automated Provisioning:** Uses `cloud-init` and `virt-install` to bootstrap new VMs with your SSH keys, custom users, and security hardening (disabled root SSH & password auth).
 - **Dynamic Networking:** Automatically scans your local subnet with `nmap`, identifies active IPs, and assigns the first available IP address to your new VM.
 - **Dynamic Thematic VM Naming:** Automatically assigns hostnames from curated theme-based name lists and avoids collisions with existing VM names.
@@ -16,14 +16,14 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 - **Manifest-Driven Architecture:** Uses a central `manifest.yaml` to dynamically generate TUI menus, define default OS versions, and strictly enforce which software profiles are supported by each distribution.
 - **Hardened Runtime Behavior:** Includes bounded SSH/ping wait loops, bridge preflight checks, and stricter shell safety defaults in entrypoints.
 - **Educational Focus:** The repository is heavily documented with in-line contextual explanations of networking concepts (DNS, bridging, subnetting) and infrastructure logic (cloud-init, KVM), making it an excellent learning tool for IT and Networking students.
-- **Standardized Portability:** Works out-of-the-box with generic `virt-manager` defaults (`virbr0`, `192.168.122.0/24`, `forge.example`) to ensure maximum compatibility and predictability across different Linux host environments.
+- **Standardized Portability:** Works natively with generic `virt-manager` defaults (`virbr0`, `192.168.122.0/24`, `forge.example`) to ensure maximum compatibility and predictability across different Linux host environments.
 - **Fully Tested:** Includes a robust `bats-core` unit testing suite with mocked dependencies and repeat-run stability checks.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-Before starting, ensure your host machine is a Linux environment with KVM and Libvirt installed and running.
+Before starting, ensure your host machine is a Linux environment with KVM and Libvirt installed and running (e.g., verify with `kvm-ok` or `systemctl status libvirtd`).
 
 ### 1. Setup Your Environment
 
@@ -44,7 +44,7 @@ Launch the interactive Terminal UI to be guided through each option step-by-step
 bin/kvm-forge-tui
 ```
 
-The TUI will walk you through selecting a distro, version, profile, vCPUs, memory, and disk size — then display a confirmation summary before provisioning.
+The TUI guides you through selecting a distro, version, profile, vCPUs, memory, and disk size — then displays a confirmation summary before provisioning.
 
 > **Requires:** [`gum`](https://github.com/charmbracelet/gum) — installed automatically if missing.
 

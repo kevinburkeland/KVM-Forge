@@ -148,7 +148,7 @@ teardown() {
 
     run download_os_image
     [ "$status" -ne 0 ]
-    [[ "$output" == *"MD5 still mismatches after redownload"* ]]
+    [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
 }
 
 @test "debian download_os_image redownloads once after checksum mismatch" {
@@ -178,7 +178,7 @@ teardown() {
 
     run download_os_image
     [ "$status" -ne 0 ]
-    [[ "$output" == *"SHA512 still mismatches after redownload"* ]]
+    [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
 }
 
 @test "alma download_os_image redownloads once after checksum mismatch" {
@@ -208,5 +208,5 @@ teardown() {
 
     run download_os_image
     [ "$status" -ne 0 ]
-    [[ "$output" == *"SHA256 still mismatches after redownload"* ]]
+    [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
 }

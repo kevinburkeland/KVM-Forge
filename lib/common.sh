@@ -45,7 +45,7 @@ log_err() {
 
 # ==========================================
 # Function: check_and_install_dependencies
-# Mechanism: Iterates through an array of required commands and checks if they exist in the PATH.
+# Mechanism: Iterate through an array of required commands and check if they exist in the PATH.
 # Infrastructure Logic: If any are missing, it attempts to dynamically resolve whether the host
 # uses APT (Debian/Ubuntu) or DNF (RHEL/Alma) and automatically installs them. This makes the
 # script portable across different Linux host environments without manual setup.
@@ -141,7 +141,7 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
 
 # ==========================================
 # Function: parse_vm_args
-# Mechanism: Uses a 'while' loop and 'case' statements to parse command-line flags (-d, -p, etc.).
+# Mechanism: Use a 'while' loop and 'case' statements to parse command-line flags (-d, -p, etc.).
 # Infrastructure Logic: 'shift' is a shell built-in that moves the positional parameters left
 # (e.g., $2 becomes $1). This is the standard Unix way to consume flags and their associated values
 # iteratively until no arguments ($#) remain.

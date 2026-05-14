@@ -45,7 +45,7 @@ EOF
 EOF
     chmod +x "${MOCK_DIR}/sudo"
 
-    # Create dummy common names.txt
+    # Create placeholder common names.txt
     mkdir -p "${CLOUD_INIT_DIR}/common"
     echo "baz" > "${CLOUD_INIT_DIR}/common/names.txt"
     echo "qux" >> "${CLOUD_INIT_DIR}/common/names.txt"

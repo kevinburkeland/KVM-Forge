@@ -43,7 +43,7 @@ download_os_image() {
         
         # If it fails a second time, abort to prevent bad deployments.
         if ! grep "$IMG_NAME" $CHECKSUM_FILE | md5sum --status -c -; then
-            log_err "Something is fishy with the mirror, MD5 still mismatches after redownload."
+            log_err "The image verification failed due to an issue with the mirror or file."
             exit 1
         fi
     fi
