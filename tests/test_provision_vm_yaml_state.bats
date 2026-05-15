@@ -153,7 +153,7 @@ INNER
  esac
  '
 
-    source "$REPO_ROOT/host/provision_vm.sh"
+    source "$REPO_ROOT/lib/provision_vm.sh"
 
     # Function provided by distro modules in production; define deterministic value for unit tests.
     get_interface_name() {

@@ -4,7 +4,7 @@ set -euo pipefail
 # Find the directory of this script, which allows it to run from any location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Define the absolute path to the main provisioning script
-PROVISION_SCRIPT="$(realpath "${SCRIPT_DIR}/../host/provision_vm.sh")"
+PROVISION_SCRIPT="$(realpath "${SCRIPT_DIR}/../lib/provision_vm.sh")"
 
 # Source the common library functions (like logging)
 source "${SCRIPT_DIR}/../lib/common.sh"

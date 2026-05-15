@@ -7,7 +7,7 @@ setup() {
     export PATH="${MOCK_DIR}:$PATH"
 
     # We need to set some environment variables that the script expects
-    export SCRIPT_DIR="${BATS_TEST_DIRNAME}/../host"
+    export SCRIPT_DIR="${BATS_TEST_DIRNAME}/../lib"
     export CLOUD_INIT_DIR="${BATS_TEST_DIRNAME}/mock_cloud_init"
     export FORGE_BRIDGE_IF="testbridge"
     export FORGE_SUBNET_SCAN="192.168.1.0/24"
@@ -51,7 +51,7 @@ EOF
     echo "qux" >> "${CLOUD_INIT_DIR}/common/names.txt"
 
     # Source the script (which will now not run main thanks to BASH_SOURCE check)
-    source "${BATS_TEST_DIRNAME}/../host/provision_vm.sh"
+    source "${BATS_TEST_DIRNAME}/../lib/provision_vm.sh"
 }
 
 teardown() {
