@@ -105,19 +105,19 @@ EOF
 }
 
 @test "provision_vm main fails when distro module is missing" {
-    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/host/provision_vm.sh'; parse_vm_args(){ DISTRO='nope'; PROFILE='base'; VERSION='1'; VCPU=1; MEMORY=512; DISK_SIZE=5; export DISTRO PROFILE VERSION VCPU MEMORY DISK_SIZE; }; check_and_install_dependencies(){ :; }; main"
+    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/lib/provision_vm.sh'; parse_vm_args(){ DISTRO='nope'; PROFILE='base'; VERSION='1'; VCPU=1; MEMORY=512; DISK_SIZE=5; export DISTRO PROFILE VERSION VCPU MEMORY DISK_SIZE; }; check_and_install_dependencies(){ :; }; main"
     [ "$status" -ne 0 ]
     [[ "$output" == *"Distribution module 'nope' not found"* ]]
 }
 
 @test "provision_vm main fails when profile yaml is missing" {
-    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/host/provision_vm.sh'; parse_vm_args(){ DISTRO='ubuntu'; PROFILE='doesnotexist'; VERSION='24.04'; VCPU=1; MEMORY=512; DISK_SIZE=5; export DISTRO PROFILE VERSION VCPU MEMORY DISK_SIZE; }; check_and_install_dependencies(){ :; }; main"
+    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/lib/provision_vm.sh'; parse_vm_args(){ DISTRO='ubuntu'; PROFILE='doesnotexist'; VERSION='24.04'; VCPU=1; MEMORY=512; DISK_SIZE=5; export DISTRO PROFILE VERSION VCPU MEMORY DISK_SIZE; }; check_and_install_dependencies(){ :; }; main"
     [ "$status" -ne 0 ]
     [[ "$output" == *"does not exist for profile 'doesnotexist'"* ]]
 }
 
 @test "provision_vm main falls back to root when yq username is null" {
-    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; export FORGE_DEFAULT_USER=''; source() { if [[ \"\$1\" == *\"/lib/distros/\"* ]]; then return 0; else builtin source \"\$@\"; fi; }; source '$REPO_ROOT/host/provision_vm.sh'; parse_vm_args(){ DISTRO='ubuntu'; PROFILE='base'; VERSION='24.04'; VCPU=1; MEMORY=512; DISK_SIZE=5; export DISTRO PROFILE VERSION VCPU MEMORY DISK_SIZE; }; check_and_install_dependencies(){ :; }; download_os_image(){ IMG_NAME='placeholder.img'; OS_VARIANT='ubuntu24.04'; export IMG_NAME OS_VARIANT; }; get_available_ip(){ NEWIP='192.168.122.77'; NEWIP_YAML='192.168.122.77/24'; export NEWIP NEWIP_YAML; }; get_random_hostname(){ NEWNAME='vmroot'; NEWNAME_FQDN='vmroot.example.test'; export NEWNAME NEWNAME_FQDN; }; prepare_cloud_init_config(){ TEMP_DIR=\"\$(mktemp -d)\"; export TEMP_DIR; :; }; launch_vm(){ :; }; main | tail -n1"
+    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; export FORGE_DEFAULT_USER=''; source() { if [[ \"\$1\" == *\"/lib/distros/\"* ]]; then return 0; else builtin source \"\$@\"; fi; }; source '$REPO_ROOT/lib/provision_vm.sh'; parse_vm_args(){ DISTRO='ubuntu'; PROFILE='base'; VERSION='24.04'; VCPU=1; MEMORY=512; DISK_SIZE=5; export DISTRO PROFILE VERSION VCPU MEMORY DISK_SIZE; }; check_and_install_dependencies(){ :; }; download_os_image(){ IMG_NAME='placeholder.img'; OS_VARIANT='ubuntu24.04'; export IMG_NAME OS_VARIANT; }; get_available_ip(){ NEWIP='192.168.122.77'; NEWIP_YAML='192.168.122.77/24'; export NEWIP NEWIP_YAML; }; get_random_hostname(){ NEWNAME='vmroot'; NEWNAME_FQDN='vmroot.example.test'; export NEWNAME NEWNAME_FQDN; }; prepare_cloud_init_config(){ TEMP_DIR=\"\$(mktemp -d)\"; export TEMP_DIR; :; }; launch_vm(){ :; }; main | tail -n1"
     if [ "$status" -ne 0 ]; then
         echo "Output: $output"
     fi

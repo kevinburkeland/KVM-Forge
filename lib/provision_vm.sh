@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Source the common library functions (logging, dependency checking, arg parsing)
-source "${SCRIPT_DIR}/../lib/common.sh"
+source "${SCRIPT_DIR}/common.sh"
 
 # Determine the absolute path to the cloud-init directory
 CLOUD_INIT_DIR="${CLOUD_INIT_DIR:-$(realpath "${SCRIPT_DIR}/../cloud-init")}"
@@ -233,7 +233,7 @@ main() {
     parse_vm_args "$@"
 
     # Source the appropriate distribution module
-    DISTRO_MODULE="${SCRIPT_DIR}/../lib/distros/${DISTRO}.sh"
+    DISTRO_MODULE="${SCRIPT_DIR}/distros/${DISTRO}.sh"
     if [ ! -f "$DISTRO_MODULE" ]; then
         log_err "Distribution module '$DISTRO' not found at $DISTRO_MODULE."
         exit 1
