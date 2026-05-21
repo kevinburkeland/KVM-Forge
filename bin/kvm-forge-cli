@@ -155,6 +155,10 @@ wait_for_cloud_init() {
 main() {
     # Inherited from common.sh, this parses the command-line flags (-d, -p, etc.)
     parse_vm_args "$@"
+
+    if [ "$DISTRO" = "gentoo" ]; then
+        log_info "\033[1;33m[WARNING] Gentoo virtual machines can take an extended time to provision and update!\033[0m"
+    fi
     
     # Execute the steps sequentially
     execute_provisioner

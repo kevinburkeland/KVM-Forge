@@ -210,3 +210,34 @@ teardown() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
 }
+
+@test "gentoo download_os_image redownloads once after checksum mismatch" {
+    source "$REPO_ROOT/lib/distros/gentoo.sh"
+    export VERSION="latest"
+    export CHECKSUM_FAIL_MODE="once"
+
+    : > "di-amd64-cloudinit-20260510T170106Z.qcow2"
+
+    run download_os_image
+    [ "$status" -eq 0 ]
+
+    run grep -q "SHA256 mismatch or file corrupt. Redownloading" <<< "$output"
+    [ "$status" -eq 0 ]
+
+    run /bin/grep -c "wget -q https://distfiles.gentoo.org/releases/amd64/autobuilds/20260510T170106Z/di-amd64-cloudinit-20260510T170106Z.qcow2$" "$CALL_LOG"
+    [ "$status" -eq 0 ]
+    [ "$output" -eq 1 ]
+}
+
+@test "gentoo download_os_image aborts on second checksum mismatch" {
+    source "$REPO_ROOT/lib/distros/gentoo.sh"
+    export VERSION="latest"
+    export CHECKSUM_FAIL_MODE="always"
+
+    : > "di-amd64-cloudinit-20260510T170106Z.qcow2"
+
+    run download_os_image
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
+}
+

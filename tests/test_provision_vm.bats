@@ -181,3 +181,57 @@ EOF
 
     [ "$(get_interface_name)" = "enp1s0" ]
 }
+
+@test "gentoo interface name matches predictable virtio naming" {
+    source "${BATS_TEST_DIRNAME}/../lib/distros/gentoo.sh"
+
+    [ "$(get_interface_name)" = "enp1s0" ]
+}
+
+@test "download_os_image selects Gentoo latest image" {
+    export DISTRO="gentoo"
+    export VERSION="latest"
+
+    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
+
+    cat << 'EOF' > "${MOCK_DIR}/wget"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/wget"
+
+    cat << 'EOF' > "${MOCK_DIR}/sha256sum"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/sha256sum"
+
+    cat << 'EOF' > "${MOCK_DIR}/grep"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/grep"
+
+    cat << 'EOF' > "${MOCK_DIR}/cp"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/cp"
+
+    cat << 'EOF' > "${MOCK_DIR}/chmod"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/chmod"
+
+    cat << 'EOF' > "${MOCK_DIR}/install"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/install"
+
+    download_os_image
+    [ "$IMG_NAME" = "di-amd64-cloudinit-latest.qcow2" ]
+    [ "$OS_VARIANT" = "gentoo" ]
+}
+

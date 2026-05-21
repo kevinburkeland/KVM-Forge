@@ -80,6 +80,15 @@ show_summary_and_confirm() {
         "$(printf '%-12s %s' 'Disk:'      "${DISK_SIZE} GB")"
     echo ""
 
+    if [ "$DISTRO" = "gentoo" ]; then
+        gum style \
+            --foreground 214 --bold --border rounded --border-foreground 214 \
+            --align left --margin "0 2" --padding "0 2" \
+            "WARNING: Gentoo virtual machines can take an extended time" \
+            "to provision and update due to compile-time package installs."
+        echo ""
+    fi
+
     if ! gum confirm "Provision this VM locally?"; then
         gum style --foreground 214 "Aborted."
         exit 0
