@@ -70,7 +70,7 @@ echo -e "\n--- SSH Authentication ---"
 echo "To enable secure, passwordless automation, KVM-Forge injects an SSH public key into every new VM."
 echo "You can provide an existing key, or generate a fresh, secure key specifically for KVM."
 echo "Select how you want to handle SSH keys for the VMs:"
-SSH_CHOICE=$(gum choose "Use existing public key" "Generate a new ED25519 keypair")
+SSH_CHOICE=$(gum choose "Use existing public key" "Generate a new ED25519 keypair" "Pull public key from GitHub")
 
 if [ "$SSH_CHOICE" == "Use existing public key" ]; then
     # Try to find a common existing public key
@@ -87,7 +87,7 @@ if [ "$SSH_CHOICE" == "Use existing public key" ]; then
         log_err "Key file not found at $FORGE_SSH_KEY_PATH"
         exit 1
     fi
-else
+elif [ "$SSH_CHOICE" == "Generate a new ED25519 keypair" ]; then
     # The user chose to generate a new key specifically for KVM-Forge
     KEY_PATH="$HOME/.ssh/id_ed25519_kvmforge"
     
@@ -110,6 +110,24 @@ else
     fi
     # Store the path to the public key
     FORGE_SSH_KEY_PATH="${KEY_PATH}.pub"
+elif [ "$SSH_CHOICE" == "Pull public key from GitHub" ]; then
+    GH_USER=$(gum input --prompt "GitHub Username: " --placeholder "torvalds")
+    
+    KEY_PATH="$HOME/.ssh/id_github_${GH_USER}.pub"
+    
+    log_info "Fetching public keys from https://github.com/${GH_USER}.keys..."
+    if curl -sSLf "https://github.com/${GH_USER}.keys" -o "$KEY_PATH"; then
+        if [ ! -s "$KEY_PATH" ] || ! grep -q '[^[:space:]]' "$KEY_PATH"; then
+            log_err "No keys found for GitHub user ${GH_USER}."
+            rm -f "$KEY_PATH"
+            exit 1
+        fi
+        log_info "Successfully downloaded keys to $KEY_PATH"
+        FORGE_SSH_KEY_PATH="$KEY_PATH"
+    else
+        log_err "Failed to fetch keys for user ${GH_USER}. Please check the username and your internet connection."
+        exit 1
+    fi
 fi
 
 # ==========================================

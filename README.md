@@ -11,7 +11,7 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 - **Automated Provisioning:** Uses `cloud-init` and `virt-install` to bootstrap new VMs with your SSH keys, custom users, and security hardening (disabled root SSH & password auth).
 - **Dynamic Networking:** Automatically scans your local subnet with `nmap`, identifies active IPs, and assigns the first available IP address to your new VM.
 - **Dynamic Thematic VM Naming:** Automatically assigns hostnames from curated theme-based name lists and avoids collisions with existing VM names.
-- **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, and `python`.
+- **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, `python`, and `testing`.
 - **Interactive TUI:** Includes both a `setup.sh` configuration wizard and a `kvm-forge-tui` provisioner, both powered by `gum`, for a guided Terminal UI experience without needing to memorize flags.
 - **Manifest-Driven Architecture:** Uses a central `manifest.yaml` to dynamically generate TUI menus, define default OS versions, and strictly enforce which software profiles are supported by each distribution.
 - **Hardened Runtime Behavior:** Includes bounded SSH/ping wait loops, bridge preflight checks, and stricter shell safety defaults in entrypoints.
@@ -60,11 +60,25 @@ bin/kvm-forge-cli --distro alma --profile docker --cpus 4 --memory 8192 --disk-s
 **Available Flags:**
 
 - `-d, --distro` : Distro to use (`ubuntu`, `debian`, or `alma`, default: `ubuntu`)
-- `-v, --version` : Distro version (default: `24.04` for ubuntu, `13` for debian, `10` for alma)
-- `-p, --profile` : Software profile to use (`base`, `docker`, `python`)
+- `-v, --version` : Distro version (default: `24.04` for ubuntu, `12` for debian, `10` for alma)
+- `-p, --profile` : Software profile to use (`base`, `docker`, `python`, `testing`)
 - `-c, --cpus` : Number of vCPUs (default: 4)
 - `-m, --memory` : Memory in MB (default: 8192)
 - `-s, --disk-size`: Disk size in GB (default: 30)
+
+### 3. Using the Student Testing Profile
+
+KVM-Forge includes a `testing` profile designed specifically for students to safely experiment with their own `cloud-init` directives. 
+
+To use it:
+1. Open the `testing.yaml` file for your desired distribution (e.g., `cloud-init/profiles/ubuntu/testing.yaml`).
+2. Locate the **STUDENT TESTING AREA** block.
+3. Add your custom configurations (such as `write_files`, `runcmd`, or `packages`).
+4. Provision your VM using the `testing` profile:
+   ```bash
+   bin/kvm-forge-cli -d ubuntu -p testing
+   ```
+Your custom scripts will automatically be executed during the VM's first boot, while KVM-Forge securely handles the networking, SSH keys, and system naming under the hood!
 
 ## 🏷️ Dynamic Thematic Naming
 
@@ -76,7 +90,7 @@ KVM-Forge assigns hostnames automatically from `cloud-init/common/names.txt` to 
 
 This gives you predictable, human-friendly naming without requiring manual hostname entry for every provision.
 
-### 3. Run Unit Tests
+### 4. Run Unit Tests
 
 To run the testing suite, ensure you have `bats` installed on your host system, then run:
 

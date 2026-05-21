@@ -2,7 +2,7 @@ distros:
   ubuntu:
     default_version: "24.04"
     supported_versions: ["22.04", "24.04", "25.10"]
-    profiles: ["base", "docker", "python"]
+    profiles: ["base", "docker", "python", "testing"]
   debian:
     default_version: "13"
     supported_versions: ["11", "12", "13"]
@@ -10,8 +10,8 @@ distros:
       "11": "bullseye"
       "12": "bookworm"
       "13": "trixie"
-    profiles: ["base", "docker", "python"]
+    profiles: ["base", "docker", "python", "testing"]
   alma:
     default_version: "10"
     supported_versions: ["8", "9", "10"]
-    profiles: ["base", "docker", "python"]
+    profiles: ["base", "docker", "python", "testing"]

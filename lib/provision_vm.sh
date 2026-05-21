@@ -108,7 +108,7 @@ prepare_cloud_init_config() {
 instance-id: ${NEWNAME_FQDN}
 local-hostname: ${NEWNAME_FQDN}
 EOF
-    # Copy the requested user profile (e.g., docker, python) into the temporary directory
+    # Copy the requested user profile (e.g., docker, python, testing) into the temporary directory
     cp "$user_data_file" "$TEMP_DIR/user-data"
 
     # A helper function that runs 'yq' to update YAML keys in place without destroying structure.
