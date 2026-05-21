@@ -211,6 +211,12 @@ launch_vm() {
         exit 1
     fi
 
+    local -a extra_args=()
+    if [ "$DISTRO" = "gentoo" ]; then
+        extra_args+=( "--sysinfo" "type=smbios,system_serial=ds=nocloud" )
+        extra_args+=( "--boot" "uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no" )
+    fi
+
     # virt-install is the command-line tool for KVM/QEMU deployments
     virt-install --name "$NEWNAME_FQDN" \
         --vcpu "$VCPU" \
@@ -219,6 +225,7 @@ launch_vm() {
         --osinfo "name=$OS_VARIANT" \
         --disk="size=${DISK_SIZE},backing_store=/var/lib/libvirt/images/${IMG_NAME}" \
         --network bridge="$BRIDGE_IF" \
+        "${extra_args[@]}" \
         --cloud-init user-data="$TEMP_DIR/user-data,meta-data=$TEMP_DIR/meta-data,network-config=$TEMP_DIR/network-config" \
         --autostart \
         --quiet
