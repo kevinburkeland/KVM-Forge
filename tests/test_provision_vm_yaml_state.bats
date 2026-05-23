@@ -299,6 +299,7 @@ EOF
     [[ "$output" == *"virt-install"* ]]
     [[ "$output" == *"--sysinfo type=smbios,system_serial=ds=nocloud"* ]]
     [[ "$output" == *"--boot uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no"* ]]
+    [[ "$output" == *"--tpm none"* ]]
 
     rm -rf "$TEMP_DIR"
 }

@@ -215,6 +215,7 @@ launch_vm() {
     if [ "$DISTRO" = "gentoo" ]; then
         extra_args+=( "--sysinfo" "type=smbios,system_serial=ds=nocloud" )
         extra_args+=( "--boot" "uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no" )
+        extra_args+=( "--tpm" "none" )
     fi
 
     # virt-install is the command-line tool for KVM/QEMU deployments
