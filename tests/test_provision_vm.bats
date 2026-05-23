@@ -1,10 +1,25 @@
 #!/usr/bin/env bats
 
+# ==========================================
+# Systems Engineering: Test Fixtures and Mocks
+# - Test Fixtures: The setup() function establishes a clean, isolated environment (a "fixture") before
+#   every individual test case. By using 'mktemp -d' to isolate temporary workspace directories and resetting
+#   variables like HOME and PATH, we ensure that test side-effects cannot bleed across test case boundaries.
+# - Mocks: Testing orchestration scripts that invoke heavy, hardware-bound, or network-bound CLI utilities
+#   (like virt-install, wget, ssh) requires virtual virtualization (mocking). Instead of executing actual system
+#   binaries, we intercept them using lightweight mock scripts to keep our unit tests fast, predictable, and 100% offline.
+# ==========================================
 setup() {
     export BATS_RUNNING="true"
     export MOCK_DIR="${BATS_TEST_DIRNAME}/mock_bin"
     mkdir -p "$MOCK_DIR"
     export PATH="${MOCK_DIR}:$PATH"
+
+    # ==========================================
+    # Systems Engineering: Intercepting Binaries via PATH Manipulation
+    # - How it works: Prepending MOCK_DIR to the system PATH environment variable allows mock versions of
+    #   commands like nmap, virsh, and sudo to intercept and capture actual execution arguments during testing.
+    # ==========================================
 
     # We need to set some environment variables that the script expects
     export SCRIPT_DIR="${BATS_TEST_DIRNAME}/../lib"

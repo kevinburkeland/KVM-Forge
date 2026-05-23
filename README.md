@@ -100,7 +100,7 @@ To run the testing suite, ensure you have `bats` installed on your host system, 
 
 ## 🤖 AI Generation Disclosure
 
-**Note:** Portions of the code in this repository—including the provisioning scripts, cloud-init configurations, dynamic networking logic, and security hardening—were generated and refined with the assistance of an AI coding agent (Antigravity by Google DeepMind). This was done to accelerate development, improve modularity, and ensure enterprise-grade bash best practices.
+**Note:** The core architecture, provisioning scripts, robust BATS tests, and security hardening in this repository were co-developed and refined with Antigravity (an AI coding agent designed by the Google DeepMind team) to ensure bash best-practices, industrial-grade reliability, and high-quality educational value.
 
 ---
 
