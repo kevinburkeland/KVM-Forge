@@ -304,3 +304,91 @@ EOF
     [ "$NEWNAME" = "qux" ]
     [ "$NEWNAME_FQDN" = "qux.forge.example" ]
 }
+
+@test "launch_vm includes bypass and UEFI arguments when DISTRO=gentoo" {
+    cat << 'EOF' > "${MOCK_DIR}/ip"
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/ip"
+
+    export DISTRO="gentoo"
+    export NEWNAME_FQDN="gentoo-vm.forge.example"
+    export NEWIP="192.168.122.50"
+    export BRIDGE_IF="virbr0"
+    export VCPU="2"
+    export MEMORY="2048"
+    export OS_VARIANT="gentoo"
+    export DISK_SIZE="20"
+    export IMG_NAME="di-amd64-cloudinit-latest.qcow2"
+    export TEMP_DIR="$(mktemp -d)"
+
+    launch_vm
+
+    run cat "$CALL_LOG"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"virt-install"* ]]
+    [[ "$output" == *"--sysinfo type=smbios,system_serial=ds=nocloud"* ]]
+    [[ "$output" == *"--boot uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no"* ]]
+    [[ "$output" == *"--tpm none"* ]]
+
+    rm -rf "$TEMP_DIR"
+}
+
+@test "launch_vm does not include bypass or UEFI arguments when DISTRO=ubuntu" {
+    cat << 'EOF' > "${MOCK_DIR}/ip"
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/ip"
+
+    export DISTRO="ubuntu"
+    export NEWNAME_FQDN="ubuntu-vm.forge.example"
+    export NEWIP="192.168.122.51"
+    export BRIDGE_IF="virbr0"
+    export VCPU="2"
+    export MEMORY="2048"
+    export OS_VARIANT="ubuntu24.04"
+    export DISK_SIZE="20"
+    export IMG_NAME="ubuntu-24.04-server-cloudimg-amd64.img"
+    export TEMP_DIR="$(mktemp -d)"
+
+    launch_vm
+
+    run cat "$CALL_LOG"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"virt-install"* ]]
+    [[ "$output" != *"--sysinfo"* ]]
+    [[ "$output" != *"--boot"* ]]
+
+    rm -rf "$TEMP_DIR"
+}
+
+@test "launch_vm does not include bypass or UEFI arguments when DISTRO=debian" {
+    cat << 'EOF' > "${MOCK_DIR}/ip"
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/ip"
+
+    export DISTRO="debian"
+    export NEWNAME_FQDN="debian-vm.forge.example"
+    export NEWIP="192.168.122.52"
+    export BRIDGE_IF="virbr0"
+    export VCPU="2"
+    export MEMORY="2048"
+    export OS_VARIANT="debian12"
+    export DISK_SIZE="20"
+    export IMG_NAME="debian-12-generic-amd64.qcow2"
+    export TEMP_DIR="$(mktemp -d)"
+
+    launch_vm
+
+    run cat "$CALL_LOG"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"virt-install"* ]]
+    [[ "$output" != *"--sysinfo"* ]]
+    [[ "$output" != *"--boot"* ]]
+
+    rm -rf "$TEMP_DIR"
+}

@@ -15,16 +15,20 @@ test_yq.sh
 
 # OS generated files
 .DS_Store
-
+gentoo_mnt/*
 # Downloaded VM images and checksums
 CHECKSUM
 MD5SUMS
 *.img
 *.qcow2
+*.sha256
+latest-di-amd64-cloudinit.txt
 host/*.img
 host/*.qcow2
 host/MD5SUMS
 host/CHECKSUM
 SHA512SUMS
+md64-cloudinit.txt
 di-amd64-cloudinit-20260510T170106Z.qcow2.sha256
 latest-di-amd64-cloudinit.txt
+gameplan.md

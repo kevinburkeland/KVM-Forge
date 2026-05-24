@@ -1,0 +1,17 @@
+#cloud-config
+users:
+  - name: PLACEHOLDER_USER
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - SSH_KEY_PLACEHOLDER
+hostname: PLACEHOLDER_HOSTNAME
+create_hostname_file: true
+fqdn: PLACEHOLDER_FQDN
+prefer_fqdn_over_hostname: true
+timezone: PLACEHOLDER_TIMEZONE
+runcmd:
+  - mkdir -p /var/db/repos/gentoo
+  - emerge-webrsync -q
+  - emerge sys-process/htop sys-fs/ncdu app-emulation/qemu-guest-agent dev-lang/python dev-python/pip
+  - systemctl enable --now qemu-guest-agent
