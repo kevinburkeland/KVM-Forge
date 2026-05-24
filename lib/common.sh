@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# ==========================================
+# Systems Engineering: Script Robustness and Error Handling
+# Robust scripts in modern environments use shell configuration flags at the top of executable entrypoints:
+# - 'set -e' (errexit): Forces the script to terminate immediately if any command returns a non-zero exit status,
+#   preventing cascading failures where a failed prerequisite leads to undefined system states.
+# - 'set -u' (nounset): Treats references to unset/unassigned variables as errors, immediately halting execution
+#   to prevent bugs like silent typographical errors or unexpected execution branches.
+# - 'set -o pipefail': Ensures that if any command within a pipeline fails, the entire pipeline returns that non-zero
+#   exit code, rather than masking failures behind the status of the final command in the pipe.
+# ==========================================
+
+# ==========================================
+# Systems Engineering: Command Injection Prevention
+# Security validation: When reading external configuration or environment files, it is vital to perform
+# active input sanitization before sourcing the file into the running shell.
+# The regular expression ^FORGE_[A-Z0-9_]+=\"[^\`\$]*\"$ actively validates variables by:
+# 1. Requiring the variable to start with the 'FORGE_' namespace and contain only alphanumeric characters and underscores.
+# 2. Enforcing that the value is strictly wrapped in double quotes.
+# 3. Utilizing negative character matching ([^\`\$]*) to reject backticks (`) and dollar signs ($).
+#    By blocking these characters, we prevent shell command substitution and variable expansion, neutralizing
+#    injection vulnerabilities where malicious shell payloads could execute upon sourcing the config file.
+# ==========================================
 validate_forge_env_file() {
     local file="$1"
     local line=""
@@ -147,9 +169,15 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
 # ==========================================
 # Function: parse_vm_args
 # Mechanism: Use a 'while' loop and 'case' statements to parse command-line flags (-d, -p, etc.).
-# Infrastructure Logic: 'shift' is a shell built-in that moves the positional parameters left
-# (e.g., $2 becomes $1). This is the standard Unix way to consume flags and their associated values
-# iteratively until no arguments ($#) remain.
+# Systems Engineering: Positional Parameters & Unix Shift Built-in
+# In Unix shell scripting, arguments passed to the script are stored in the positional parameter array
+# ($1, $2, ..., $N), with $# representing the size of the array. The 'shift' shell built-in pops the first
+# parameter ($1) out of the list and shifts all remaining elements to the left (so the original $2 becomes the new $1).
+# In our parse loop:
+# - When a flag requires a value (e.g., -d "gentoo"), we do a double shift: first, we shift within the case option ('shift')
+#   to consume the flag's argument value, and second, we shift at the end of the loop to clear the flag identifier itself.
+# This pattern provides a memory-efficient, standard, and portable traversal of command-line arguments without
+# requiring external parsers or complex indexing arithmetic.
 # ==========================================
 parse_vm_args() {
     # Set default variables for the Virtual Machine if no flags are provided

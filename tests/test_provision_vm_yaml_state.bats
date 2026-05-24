@@ -1,5 +1,14 @@
 #!/usr/bin/env bats
 
+# ==========================================
+# Systems Engineering: Test Fixtures and Mocks
+# - Test Fixtures: The setup() function establishes a clean, isolated environment (a "fixture") before
+#   every individual test case. By using 'mktemp -d' to isolate temporary workspace directories and resetting
+#   variables like HOME and PATH, we ensure that test side-effects cannot bleed across test case boundaries.
+# - Mocks: Testing orchestration scripts that invoke heavy, hardware-bound, or network-bound CLI utilities
+#   (like virt-install, wget, ssh) requires virtual virtualization (mocking). Instead of executing actual system
+#   binaries, we intercept them using lightweight mock scripts to keep our unit tests fast, predictable, and 100% offline.
+# ==========================================
 setup() {
     export BATS_RUNNING="true"
     export REPO_ROOT="${BATS_TEST_DIRNAME}/.."
@@ -49,6 +58,15 @@ EOF
     export PUBKEY_PATH="$HOME/.ssh/id_ed25519.pub"
     echo "ssh-ed25519 AAAATESTKEY test@kvm-forge" > "$PUBKEY_PATH"
 
+    # ==========================================
+    # Systems Engineering: Intercepting Binaries via PATH Manipulation (make_mock)
+    # - How it works: The make_mock function creates a lightweight executable shell script in a dedicated
+    #   temporary folder (MOCK_DIR).
+    # - Interception: By prepending MOCK_DIR to the system PATH environment variable (PATH="${MOCK_DIR}:$PATH"),
+    #   the operating system will look in our temporary folder FIRST when searching for binary commands.
+    #   Any call to virt-install, ssh, wget, etc., resolves to our mock script rather than the actual system binary,
+    #   allowing us to record invocations in CALL_LOG and control execution return codes dynamically.
+    # ==========================================
     make_mock() {
         local name="$1"
         local body="$2"
@@ -82,6 +100,12 @@ INNER
     make_mock "ping" 'echo "ping $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh" 'echo "ssh $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh-keygen" 'echo "ssh-keygen $*" >> "$CALL_LOG"; exit 0'
+    # ==========================================
+    # Systems Engineering: Simulating Heterogeneous Host Distributions
+    # - Mocking Package Managers: By mocking 'apt-get' (Debian/Ubuntu) and 'dnf' (RHEL/Alma), we can simulate
+    #   both primary Linux packaging environments. This allows us to verify that our dependency installer
+    #   logic correctly detects the host OS flavor and invokes the appropriate package management commands.
+    # ==========================================
     make_mock "apt-get" 'echo "apt-get $*" >> "$CALL_LOG"; exit 0'
     make_mock "dnf" 'echo "dnf $*" >> "$CALL_LOG"; exit 0'
 
@@ -205,6 +229,13 @@ teardown() {
 
     prepare_cloud_init_config "$USER_DATA_FILE"
 
+    # ==========================================
+    # Systems Engineering: BATS Subshell Execution & Capture
+    # - The 'run' built-in in BATS executes the following command block inside a completely isolated subshell.
+    # - It intercepts standard output and standard error, saving it into the global '$output' variable.
+    # - It intercepts the shell exit code, saving it into the global '$status' variable.
+    # This prevents runtime failures from crashing the main test runner and enables standard assert comparisons.
+    # ==========================================
     run grep -q "iface: enp1s0" "$TEMP_DIR/network-config"
     [ "$status" -eq 0 ]
     run grep -q "address: 192.168.1.33/24" "$TEMP_DIR/network-config"

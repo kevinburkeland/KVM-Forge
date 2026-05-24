@@ -79,10 +79,16 @@ wait_for_vm() {
 
 # ==========================================
 # Function: update_known_hosts
-# Mechanism: Removes old SSH signatures from the known_hosts file.
-# Networking Context: SSH uses host fingerprints to prevent Man-In-The-Middle (MITM) attacks.
-# Because our KVM lab destroys and recreates VMs on the same IP addresses, SSH will reject 
-# the connection if the new VM's fingerprint doesn't match the old one. This safely resets that check.
+# Systems Engineering: SSH Fingerprint Mismatches and Man-in-the-Middle Protections
+# - SSH employs a strict trust-on-first-use (TOFU) model. When you connect to a server, its unique cryptographic public
+#   key fingerprint is recorded in your local ~/.ssh/known_hosts file.
+# - In highly dynamic virtualization environments where VMs are repeatedly provisioned, destroyed, and recreated,
+#   new virtual machines are frequently assigned reused IP addresses.
+# - If you attempt to connect to a new VM that occupies a previously active IP, your SSH client will discover that
+#   the new guest's host key does not match the historical fingerprint recorded in known_hosts.
+# - SSH will immediately abort the connection with a severe warning, suspecting a Man-in-the-Middle (MitM) hijack.
+# - Calling 'ssh-keygen -R' safely removes any stale signatures associated with the targeted IP or hostname,
+#   safely resetting the host verification state without compromising other recorded hosts.
 # ==========================================
 update_known_hosts() {
     if [ -f ~/.ssh/known_hosts ]; then
@@ -95,11 +101,18 @@ update_known_hosts() {
 
 # ==========================================
 # Function: wait_for_cloud_init
-# Mechanism: Waits for SSH to become available, then streams the cloud-init logs.
-# Infrastructure Logic: Uses a background 'tail -f' process to stream logs, and blocks execution
-# with 'cloud-init status --wait'. Once cloud-init finishes setting up the OS, the trap kills the tail.
-# Networking Context: Uses 'StrictHostKeyChecking=accept-new' to automatically trust the new VM
-# fingerprint, avoiding manual prompts that break automation.
+# Systems Engineering: Non-Interactive SSH Scripting Automation
+# - To programmatically orchestrate virtual machines without hitting interactive prompts, we pass several
+#   critical overrides as command options (-o) to the ssh client:
+#   1. 'StrictHostKeyChecking=accept-new': Instructs SSH to automatically trust and record the host fingerprint
+#      if it is completely new, but still alert/fail if the fingerprint has changed. This eliminates manual
+#      "Are you sure you want to continue connecting (yes/no)?" prompts while preserving basic hijack security.
+#   2. 'UserKnownHostsFile=/dev/null': Prevents the volatile, transient VM fingerprints from cluttering the
+#      user's persistent known_hosts file, keeping local SSH directories clean.
+#   3. 'BatchMode=yes': Disables all interactive credential prompt mechanisms (such as password inputs or
+#      two-factor auth prompts). If authentication fails via public SSH keys, the connection fails immediately
+#      with a non-zero exit code, allowing the automation loop to handle the failure cleanly rather than hanging.
+#   4. 'ConnectTimeout=5': Ensures the probe fails fast if the network stack or port 22 is not yet listening.
 # ==========================================
 wait_for_cloud_init() {
     log_info "Waiting for cloud-init to finish (this may take a few minutes)..."

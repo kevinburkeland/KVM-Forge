@@ -26,3 +26,5 @@ host/*.qcow2
 host/MD5SUMS
 host/CHECKSUM
 SHA512SUMS
+di-amd64-cloudinit-20260510T170106Z.qcow2.sha256
+latest-di-amd64-cloudinit.txt

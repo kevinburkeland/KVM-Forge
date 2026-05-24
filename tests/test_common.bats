@@ -1,5 +1,14 @@
 #!/usr/bin/env bats
 
+# ==========================================
+# Systems Engineering: Test Fixtures and Mocks
+# - Test Fixtures: The setup() function establishes a clean, isolated environment (a "fixture") before
+#   every individual test case. By using 'mktemp -d' to isolate temporary workspace directories and resetting
+#   variables like HOME and PATH, we ensure that test side-effects cannot bleed across test case boundaries.
+# - Mocks: Testing orchestration scripts that invoke heavy, hardware-bound, or network-bound CLI utilities
+#   (like virt-install, wget, ssh) requires virtual virtualization (mocking). Instead of executing actual system
+#   binaries, we intercept them using lightweight mock scripts to keep our unit tests fast, predictable, and 100% offline.
+# ==========================================
 setup() {
     export BATS_RUNNING="true"
     # Load common library
@@ -7,6 +16,13 @@ setup() {
 }
 
 @test "log_info outputs correctly formatted message" {
+    # ==========================================
+    # Systems Engineering: BATS Subshell Execution & Capture
+    # - The 'run' built-in in BATS executes the following command block inside a completely isolated subshell.
+    # - It intercepts standard output and standard error, saving it into the global '$output' variable.
+    # - It intercepts the shell exit code, saving it into the global '$status' variable.
+    # This prevents runtime failures from crashing the main test runner and enables standard assert comparisons.
+    # ==========================================
     run log_info "Test message"
     [ "$status" -eq 0 ]
     [[ "$output" == *"[INFO]"*"Test message"* ]]
