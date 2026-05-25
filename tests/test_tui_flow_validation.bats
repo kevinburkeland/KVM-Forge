@@ -1,5 +1,14 @@
 #!/usr/bin/env bats
 
+# ==========================================
+# Systems Engineering: Test Fixtures and Mocks
+# - Test Fixtures: The setup() function establishes a clean, isolated environment (a "fixture") before
+#   every individual test case. By using 'mktemp -d' to isolate temporary workspace directories and resetting
+#   variables like HOME and PATH, we ensure that test side-effects cannot bleed across test case boundaries.
+# - Mocks: Testing orchestration scripts that invoke heavy, hardware-bound, or network-bound CLI utilities
+#   (like virt-install, wget, ssh) requires virtual virtualization (mocking). Instead of executing actual system
+#   binaries, we intercept them using lightweight mock scripts to keep our unit tests fast, predictable, and 100% offline.
+# ==========================================
 setup() {
     export BATS_RUNNING="true"
     export REPO_ROOT="${BATS_TEST_DIRNAME}/.."
@@ -9,6 +18,12 @@ setup() {
     export MOCK_DIR
     MOCK_DIR="$(mktemp -d)"
     export PATH="${MOCK_DIR}:$PATH"
+
+    # ==========================================
+    # Systems Engineering: Intercepting Binaries via PATH Manipulation
+    # - How it works: Prepending MOCK_DIR to the PATH environment variable redirects commands like gum and yq
+    #   to their sandboxed mock scripts, facilitating predictable UI testing.
+    # ==========================================
 
     export CLI_LOG
     CLI_LOG="$(mktemp)"
@@ -68,6 +83,12 @@ EOF
     chmod +x "$MOCK_DIR/gum"
 
     # Required command mocks per project rule.
+    # ==========================================
+    # Systems Engineering: Simulating Heterogeneous Host Distributions
+    # - Mocking Package Managers: By mocking 'apt-get' (Debian/Ubuntu) and 'dnf' (RHEL/Alma), we can simulate
+    #   both primary Linux packaging environments. This allows us to verify that our dependency installer
+    #   logic correctly detects the host OS flavor and invokes the appropriate package management commands.
+    # ==========================================
     for cmd in virt-install wget nmap ping ssh ssh-keygen apt-get dnf; do
         cat > "$MOCK_DIR/$cmd" <<'EOF'
 #!/usr/bin/env bash
@@ -108,6 +129,13 @@ base
 abc
 EOF
 
+    # ==========================================
+    # Systems Engineering: BATS Subshell Execution & Capture
+    # - The 'run' built-in in BATS executes the following command block inside a completely isolated subshell.
+    # - It intercepts standard output and standard error, saving it into the global '$output' variable.
+    # - It intercepts the shell exit code, saving it into the global '$status' variable.
+    # This prevents runtime failures from crashing the main test runner and enables standard assert comparisons.
+    # ==========================================
     run "$TEST_ROOT/bin/kvm-forge-tui"
 
     [ "$status" -ne 0 ]

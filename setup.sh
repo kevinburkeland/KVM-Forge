@@ -60,11 +60,17 @@ DETECTED_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timez
 FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., $DETECTED_TZ): " --placeholder "$DETECTED_TZ" --value "${FORGE_TIMEZONE:-$DETECTED_TZ}")
 
 # ==========================================
-# Networking Context: SSH Key Generation
-# Mechanism: Generates an ED25519 SSH keypair if the user doesn't use an existing one.
-# Networking Context: ED25519 is an elliptical curve cryptography standard. It is highly
-# preferred over older RSA keys because it offers stronger security with significantly 
-# shorter keys, resulting in faster cryptographic operations during SSH handshakes.
+# Systems Engineering: Cryptographic Standards & Key Generation (ED25519 vs RSA)
+# In securing non-interactive orchestration infrastructures, selecting the correct key format is vital:
+# - RSA (Rivest-Shamir-Adleman) relies on the prime factorization problem. Securing RSA requires extremely long
+#   keys (e.g., 4096 bits) to meet modern compliance standards. This incurs larger memory footings, slower key
+#   generation, and increased CPU overhead during the modular exponentiation phases of SSH handshakes.
+# - ED25519 uses Elliptic Curve Cryptography (specifically Curve25519) to address the discrete logarithm problem.
+#   It offers several critical operational advantages:
+#   1. Highly compact keys: A 256-bit ED25519 key delivers cryptographic protection equivalent to a 3072-bit RSA key.
+#   2. Faster cryptographic handshakes: Shorter keys translate to fewer CPU operations during key exchange cycles,
+#      minimizing SSH login latency and server CPU loads under heavy automation loops.
+#   3. Resistance to side-channel attacks and random-number generator failure points.
 # ==========================================
 echo -e "\n--- SSH Authentication ---"
 echo "To enable secure, passwordless automation, KVM-Forge injects an SSH public key into every new VM."
@@ -131,9 +137,18 @@ elif [ "$SSH_CHOICE" == "Pull public key from GitHub" ]; then
 fi
 
 # ==========================================
-# Infrastructure Logic: Atomic Environment Writes
-# Mechanism: Explains how 'mktemp' and 'trap' ensure atomic file writes, preventing
-# corrupted environment configurations if the script exits unexpectedly.
+# Systems Engineering: Atomic File Write Pattern & Secure Configuration Sourcing
+# Writing environment configurations directly to target destination files (e.g., config/forge.env) is risky:
+# - An unexpected script termination or disk-full event midway through the operation can leave the configuration
+#   in a corrupt, partially written state, leading to subsequent parser or sourcing crashes.
+# - To avoid this, we use the "Atomic File Write" pattern:
+#   1. We spawn a temporary workspace using 'mktemp', creating a unique, empty file in the host system's temp space.
+#   2. We set a POSIX 'trap' destructor that guarantees cleanup of the temp file on any script exit or abort.
+#   3. We populate the secure variables within the temp file first.
+#   4. We atomic-move/install the completed file to its final destination using the 'install' utility.
+#   5. The 'install -m 600' command enforces strict POSIX access control lists (owner read-write only). This restricts
+#      visibility of private networking architectures and server layouts exclusively to the deploying user, protecting
+#      the virtualization environment against local privilege escalation or intelligence leaks.
 # ==========================================
 TMP_ENV_FILE=$(mktemp)
 trap 'rm -f "${TMP_ENV_FILE:-}"' EXIT

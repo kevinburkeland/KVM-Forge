@@ -195,9 +195,21 @@ EOF
 # ==========================================
 # Function: launch_vm
 # Mechanism: Uses the 'virt-install' command to actually spin up the KVM virtual machine.
-# Infrastructure Logic: It attaches the cloud-init files (user-data, meta-data, network-config)
-# as a virtual CD-ROM. When the Linux kernel boots, the cloud-init daemon mounts this CD-ROM,
-# reads the configuration, and automatically sets up the OS without any manual intervention.
+# Systems Engineering: Backing Store & Sparse Files (Thin Provisioning)
+# - The '--disk backing_store=...' flag utilizes QEMU's copy-on-write (COW) capabilities.
+# - Instead of duplicating a multi-gigabyte OS image for every virtual machine, the new VM's disk is created
+#   as a thin-provisioned layer referencing a shared, read-only base image (the backing store).
+# - Guest read requests are satisfied from the shared base image, while all write requests (mutations) are stored
+#   in a separate, sparse delta file (qcow2 format). This saves massive amounts of physical host disk space
+#   and dramatically speeds up VM creation times from minutes to seconds.
+#
+# Systems Engineering: Host-Guest Coordination (QEMU Guest Agent)
+# - We install and enable the 'qemu-guest-agent' daemon in our cloud-init profiles.
+# - The agent runs inside the guest OS and opens a secure, dedicated virtio-serial communication link directly
+#   to the host hypervisor (QEMU).
+# - Through this channel, the host can execute administrative tasks out-of-band—such as querying the guest's
+#   live network interface IP addresses, syncing system clocks, and coordinating graceful ACPI-based power shutdowns
+#   without requiring SSH or network access to the guest.
 # ==========================================
 launch_vm() {
     log_info "Launching VM $NEWNAME_FQDN with IP ${NEWIP}..."
@@ -269,7 +281,15 @@ main() {
     get_available_ip
     get_random_hostname
     
-    # Create a trap that automatically deletes the secure TEMP_DIR when the script finishes or errors out.
+    # ==========================================
+    # Systems Engineering: Unix Traps as Clean Destructors
+    # The 'trap' command is a shell built-in that intercepts POSIX signals and script exit conditions.
+    # By registering a cleanup command on the pseudo-signal 'EXIT', we define a guaranteed destructor.
+    # Regardless of whether the script terminates successfully, returns early, or hits an unexpected error (like
+    # an installation failure or SIGINT/Ctrl+C interrupt), the shell will always execute 'rm -rf "$TEMP_DIR"'.
+    # This prevents directory leakage, protects the host's temp filesystem from bloating, and ensures no sensitive
+    # plain-text cloud-init variables or SSH keys are left lying around in the host's temporary storage.
+    # ==========================================
     trap 'rm -rf "$TEMP_DIR"' EXIT
     prepare_cloud_init_config "$USER_DATA_FILE"
     

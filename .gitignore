@@ -28,5 +28,7 @@ host/*.qcow2
 host/MD5SUMS
 host/CHECKSUM
 SHA512SUMS
-gentoo_mnt
+md64-cloudinit.txt
+di-amd64-cloudinit-20260510T170106Z.qcow2.sha256
+latest-di-amd64-cloudinit.txt
 gameplan.md
