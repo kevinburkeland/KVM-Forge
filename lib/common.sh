@@ -273,3 +273,97 @@ parse_vm_args() {
     # Export these variables so they are accessible to any script that calls this function
     export DISTRO VERSION PROFILE VCPU MEMORY DISK_SIZE
 }
+
+# ==========================================
+# Function: verify_and_sync_image
+# Mechanism: Downloads, cryptographically verifies, and synchronizes a cloud image.
+# Arguments:
+#   1. IMAGE_URL: The direct HTTP download URL for the cloud image.
+#   2. CHECKSUM_URL: The direct HTTP download URL for the checksum list.
+#   3. CHECKSUM_FILE: The local name of the checksum file (e.g. MD5SUMS, SHA256SUMS).
+#   4. CHECKSUM_TYPE: The hashing algorithm to use (md5, sha256, or sha512).
+#   5. TARGET_IMG_NAME: The final filename of the image in the local workspace.
+#   6. OS_VARIANT: The OS type passed to virt-install.
+# ==========================================
+verify_and_sync_image() {
+    local IMAGE_URL="$1"
+    local CHECKSUM_URL="$2"
+    local CHECKSUM_FILE="$3"
+    local CHECKSUM_TYPE="$4"
+    local TARGET_IMG_NAME="$5"
+    local OS_VARIANT_ARG="$6"
+
+    local local_file
+    local_file=$(basename "$IMAGE_URL")
+
+    local display_distro="$DISTRO"
+    case "$DISTRO" in
+        ubuntu) display_distro="Ubuntu" ;;
+        debian) display_distro="Debian" ;;
+        alma) display_distro="AlmaLinux" ;;
+        gentoo) display_distro="Gentoo" ;;
+    esac
+
+    if [ "$DISTRO" = "debian" ] && [ -n "${CODENAME:-}" ]; then
+        log_info "Checking ${display_distro} ${VERSION} (${CODENAME}) image..."
+    elif [ "$DISTRO" = "gentoo" ] && [ -n "${REAL_VERSION:-}" ]; then
+        log_info "Checking ${display_distro} ${VERSION} (Build: ${REAL_VERSION}) image..."
+    else
+        log_info "Checking ${display_distro} ${VERSION} image..."
+    fi
+
+    # Download the checksum file if missing
+    if [ ! -f "$CHECKSUM_FILE" ]; then
+        wget -q "$CHECKSUM_URL" -O "$CHECKSUM_FILE"
+    fi
+
+    # Download the cloud image if missing
+    if [ ! -f "$local_file" ]; then
+        wget -q "$IMAGE_URL"
+    fi
+
+    local checksum_cmd=""
+    case "$CHECKSUM_TYPE" in
+        md5) checksum_cmd="md5sum" ;;
+        sha256) checksum_cmd="sha256sum" ;;
+        sha512) checksum_cmd="sha512sum" ;;
+        *) log_err "Unsupported checksum type: $CHECKSUM_TYPE"; exit 1 ;;
+    esac
+
+    local upper_type
+    upper_type=$(echo "$CHECKSUM_TYPE" | tr '[:lower:]' '[:upper:]')
+
+    # Hash verification helper
+    check_hash() {
+        if grep -q "$local_file" "$CHECKSUM_FILE" 2>/dev/null; then
+            grep "$local_file" "$CHECKSUM_FILE" | "$checksum_cmd" --status -c -
+        else
+            "$checksum_cmd" --status -c "$CHECKSUM_FILE"
+        fi
+    }
+
+    # Perform the hash validation
+    if ! check_hash; then
+        log_err "${upper_type} mismatch or file corrupt. Redownloading..."
+        rm -f "$local_file"
+        wget -q "$IMAGE_URL"
+        
+        # If it fails a second time, abort
+        if ! check_hash; then
+            log_err "The image verification failed due to an issue with the mirror or file."
+            exit 1
+        fi
+    fi
+
+    # Export variables needed by launch_vm
+    export IMG_NAME="$TARGET_IMG_NAME"
+    export OS_VARIANT="$OS_VARIANT_ARG"
+
+    local LIBVIRT_IMG_PATH="/var/lib/libvirt/images/${IMG_NAME}"
+    # Keep the libvirt base image in sync if it is missing or differs from the validated source image
+    if [ ! -f "$LIBVIRT_IMG_PATH" ] || ! cmp -s "$local_file" "$LIBVIRT_IMG_PATH"; then
+        log_info "Syncing base image to libvirt images directory..."
+        sudo install -m 640 "$local_file" "$LIBVIRT_IMG_PATH"
+    fi
+}
+
