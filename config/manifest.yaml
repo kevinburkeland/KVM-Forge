@@ -15,3 +15,7 @@ distros:
     default_version: "10"
     supported_versions: ["8", "9", "10"]
     profiles: ["base", "docker", "python", "testing"]
+  gentoo:
+    default_version: "latest"
+    supported_versions: ["latest"]
+    profiles: ["base", "docker", "python", "testing"]
