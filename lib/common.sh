@@ -79,7 +79,7 @@ check_and_install_dependencies() {
     # Loop through each provided command and check if it's available in the system PATH
     for cmd in "${cmds[@]}"; do
         if [ "$cmd" = "libvirt-daemon" ]; then
-            if systemctl status libvirtd &> /dev/null || command -v kvm-ok &> /dev/null ||  systemctl status virtqemud.service &> /dev/null; then
+            if command -v libvirtd &> /dev/null || command -v virtqemud &> /dev/null || [ -f /usr/sbin/libvirtd ] || [ -f /usr/sbin/virtqemud ] || systemctl status libvirtd &> /dev/null || systemctl status virtqemud.service &> /dev/null || command -v kvm-ok &> /dev/null; then
                 continue
             else
                 MISSING_CMDS="$MISSING_CMDS $cmd"
