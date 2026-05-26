@@ -1,0 +1,3 @@
+[submodule "furnace"]
+	path = furnace
+	url = ../KVM-Furnace.git
