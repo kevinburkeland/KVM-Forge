@@ -170,4 +170,23 @@ EOF
 install -m 600 "$TMP_ENV_FILE" "$ENV_FILE"
 rm -f "$TMP_ENV_FILE"
 
+# Check if the bridge network switch already exists on the host
+if ! ip link show "$FORGE_BRIDGE_IF" >/dev/null 2>&1; then
+    echo ""
+    log_info "Required network bridge interface '$FORGE_BRIDGE_IF' is missing on your host."
+    if gum confirm "Would you like KVM-Furnace to configure and tune this bridge network now?"; then
+        # Deduce the full network block from the gateway and CIDR suffix,
+        # keeping the nmap scan range subset strictly isolated for KVM-Forge VM allocation.
+        local gateway_base
+        gateway_base=$(echo "$FORGE_GATEWAY" | cut -d'.' -f1-3)
+        local full_subnet="${gateway_base}.0/${FORGE_CIDR_SUFFIX}"
+        
+        # Execute furnace-tune to prepare host capabilities, bridges, and NAT rules
+        sudo "${SCRIPT_DIR}/furnace/bin/furnace-tune" --bridge "$FORGE_BRIDGE_IF" --subnet "$full_subnet" --gateway "$FORGE_GATEWAY"
+    else
+        log_info "Bridge configuration skipped. Ensure it is configured manually before deploying VMs."
+    fi
+fi
+
 log_info "Setup complete! Configuration saved to $ENV_FILE"
+

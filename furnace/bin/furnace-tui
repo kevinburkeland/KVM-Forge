@@ -1,0 +1,10 @@
+#!/bin/bash
+# ==============================================================================
+# KVM-Furnace: Interactive TUI Entrypoint Wrapper
+# ==============================================================================
+set -euo pipefail
+
+FURNACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Execute the main tuner in interactive mode
+exec "${FURNACE_DIR}/bin/furnace-tune" --interactive
