@@ -39,43 +39,18 @@ get_debian_codename() {
 
 # ==========================================
 # Function: download_os_image
-# Mechanism: Downloads the Debian qcow2 cloud image and its SHA512 checksum.
-# Infrastructure Logic: Uses 'sha512sum' to cryptographically verify the image's integrity.
-# SHA512 is stronger than MD5, making it practically impossible for an attacker to spoof
-# the image. Once verified, the image is staged in the libvirt directory for VM cloning.
+# Mechanism: Configures variables for Debian cloud images and delegates to the centralized helper.
 # ==========================================
 download_os_image() {
     CODENAME=$(get_debian_codename "$VERSION")
     
-    # Configure variables specific to Debian cloud images
-    IMG_NAME="debian-${VERSION}-generic-amd64.qcow2"
-    OS_VARIANT="debian${VERSION}"
-    CHECKSUM_FILE="SHA512SUMS"
+    local target_img_name="debian-${VERSION}-generic-amd64.qcow2"
+    local os_variant="debian${VERSION}"
+    local checksum_file="SHA512SUMS"
     
-    log_info "Checking Debian ${VERSION} (${CODENAME}) image..."
-    wget -q "https://cloud.debian.org/images/cloud/${CODENAME}/latest/SHA512SUMS" -O $CHECKSUM_FILE
+    local image_url="https://cloud.debian.org/images/cloud/${CODENAME}/latest/${target_img_name}"
+    local checksum_url="https://cloud.debian.org/images/cloud/${CODENAME}/latest/SHA512SUMS"
     
-    if [ ! -f "$IMG_NAME" ]; then
-        wget -q "https://cloud.debian.org/images/cloud/${CODENAME}/latest/$IMG_NAME"
-    fi
-
-    if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha512sum --status -c -; then
-        log_err "SHA512 mismatch or file corrupt. Redownloading..."
-        rm -f "$IMG_NAME"
-        wget -q "https://cloud.debian.org/images/cloud/${CODENAME}/latest/$IMG_NAME"
-        if ! grep "$IMG_NAME" $CHECKSUM_FILE | sha512sum --status -c -; then
-            log_err "The image verification failed due to an issue with the mirror or file."
-            exit 1
-        fi
-    fi
-
-    # Export variables needed by launch_vm
-    export IMG_NAME OS_VARIANT
-
-    LIBVIRT_IMG_PATH="/var/lib/libvirt/images/${IMG_NAME}"
-    # Keep the libvirt base image in sync if it is missing or differs from the validated source image.
-    if [ ! -f "$LIBVIRT_IMG_PATH" ] || ! cmp -s "$IMG_NAME" "$LIBVIRT_IMG_PATH"; then
-        log_info "Syncing base image to libvirt images directory..."
-        sudo install -m 640 "$IMG_NAME" "$LIBVIRT_IMG_PATH"
-    fi
+    verify_and_sync_image "$image_url" "$checksum_url" "$checksum_file" "sha512" "$target_img_name" "$os_variant"
 }
+
