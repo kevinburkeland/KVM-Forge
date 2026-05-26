@@ -1,0 +1,207 @@
+#!/bin/bash
+# ==============================================================================
+# KVM-Furnace: Host Environment Tuner & Network Bootstrapper
+# ==============================================================================
+set -euo pipefail
+
+# Dynamically locate directories
+FURNACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Source Libraries
+source "${FURNACE_DIR}/lib/tuner.sh"
+source "${FURNACE_DIR}/lib/networking.sh"
+
+show_help() {
+    echo "KVM-Furnace: Host Environment Tuner & Network Bootstrapper"
+    echo ""
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -b, --bridge <name>    Virtual bridge switch name (e.g. virbr0, forgebr0)"
+    echo "  -s, --subnet <cidr>    Virtual subnet block (e.g. 192.168.122.0/24)"
+    echo "  -g, --gateway <ip>     Gateway IP address for the bridge (e.g. 192.168.122.1)"
+    echo "  -i, --interactive      Run the interactive diagnostic and bootstrap tutorial"
+    echo "  -h, --help             Display help and usage guidelines"
+    echo ""
+    echo "Example:"
+    echo "  sudo $0 --bridge forgebr0 --subnet 192.168.122.0/24 --gateway 192.168.122.1"
+}
+
+# Default values
+BRIDGE=""
+SUBNET=""
+GATEWAY=""
+INTERACTIVE=false
+
+# Parse Arguments
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -b|--bridge) BRIDGE="$2"; shift ;;
+        -s|--subnet) SUBNET="$2"; shift ;;
+        -g|--gateway) GATEWAY="$2"; shift ;;
+        -i|--interactive) INTERACTIVE=true ;;
+        -h|--help) show_help; exit 0 ;;
+        *) furnace_log_err "Unknown argument: $1"; show_help; exit 2 ;;
+    esac
+    shift
+done
+
+# ==============================================================================
+# Interactive Educational Wizard Mode
+# ==============================================================================
+run_interactive_wizard() {
+    # Check if 'gum' is available for premium UI presentation
+    local use_gum=false
+    if command -v gum &>/dev/null; then
+        use_gum=true
+    fi
+
+    if [ "$use_gum" = true ]; then
+        gum style --foreground 212 --border-foreground 212 --border double --align center --width 60 --margin "1 2" --padding "1 4" 'KVM-Furnace: Host Environment Tuner'
+    else
+        echo -e "\033[1;35m============================================================\033[0m"
+        echo -e "\033[1;35m         KVM-Furnace: Host Environment Tuner & Diagnostics  \033[0m"
+        echo -e "\033[1;35m============================================================\033[0m"
+    fi
+
+    echo "This interactive diagnostic will walk you through preparing your host machine"
+    echo "for KVM/QEMU virtualization and virtual area networking."
+    echo ""
+
+    # STEP 1: Hardware diagnostics (Safe, no root required)
+    if [ "$use_gum" = true ]; then
+        gum style --foreground 117 --bold -- "--- STEP 1: Hardware Virtualization Diagnostics ---"
+    else
+        echo -e "\033[1;36m--- STEP 1: Hardware Virtualization Diagnostics ---\033[0m"
+    fi
+    echo "To run guest virtual machines at native speeds, your physical CPU must support"
+    echo "hardware virtualization (Intel VT-x or AMD-V) and have KVM kernel extensions loaded."
+    echo ""
+    
+    if ! check_virtualization; then
+        furnace_log_err "Diagnostics failed. Your system does not support KVM, or modules are missing."
+        exit 1
+    fi
+    echo ""
+
+    # STEP 2: IP Forwarding (Explain and enable)
+    if [ "$use_gum" = true ]; then
+        gum style --foreground 117 --bold -- "--- STEP 2: IP Forwarding Configuration ---"
+    else
+        echo -e "\033[1;36m--- STEP 2: IP Forwarding Configuration ---\033[0m"
+    fi
+    echo "By default, the Linux kernel acts as an isolated end-host. To route packets"
+    echo "from virtual guest machines out to the public internet, we must configure the"
+    echo "host kernel to act as a router by enabling net.ipv4.ip_forward."
+    echo ""
+
+    if [ "$use_gum" = true ]; then
+        if gum confirm "Would you like KVM-Furnace to check and enable host IP forwarding?"; then
+            enable_ip_forwarding || { furnace_log_err "Failed to enable IP forwarding."; exit 1; }
+        fi
+    else
+        read -p "Would you like KVM-Furnace to check and enable host IP forwarding? (y/n) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            enable_ip_forwarding || { furnace_log_err "Failed to enable IP forwarding."; exit 1; }
+        fi
+    fi
+    echo ""
+
+    # STEP 3: Virtual Network Bridging & NAT Masquerading (Explain and enable)
+    if [ "$use_gum" = true ]; then
+        gum style --foreground 117 --bold -- "--- STEP 3: Layer-2 Bridge & Layer-3 NAT Routing ---"
+    else
+        echo -e "\033[1;36m--- STEP 3: Layer-2 Bridge & Layer-3 NAT Routing ---\033[0m"
+    fi
+    echo "Virtual machines connect their virtual NIC taps to a software switch (the bridge)"
+    echo "to establish an isolated LAN. To bridge this private LAN to your host's internet,"
+    echo "we set up an IP on the bridge and enable NAT masquerade routing."
+    echo ""
+    echo -e "\033[1;33m[📶 Wi-Fi Warning]\033[0m If your host is on a wireless (Wi-Fi/WLAN) network,"
+    echo "you cannot bridge VM virtual MACs directly onto the AP due to 802.11 3-address frames."
+    echo "KVM-Furnace resolves this by establishing a private bridge and translation via NAT MASQUERADE."
+    echo ""
+
+    # Gather parameters if not supplied on the CLI
+    if [ -z "$BRIDGE" ]; then
+        if [ "$use_gum" = true ]; then
+            BRIDGE=$(gum input --prompt "Enter bridge interface name to configure: " --placeholder "forgebr0" --value "forgebr0")
+        else
+            read -p "Enter bridge interface name to configure [forgebr0]: " BRIDGE
+            [ -z "$BRIDGE" ] && BRIDGE="forgebr0"
+        fi
+    fi
+
+    if [ -z "$GATEWAY" ]; then
+        if [ "$use_gum" = true ]; then
+            GATEWAY=$(gum input --prompt "Enter gateway IP address for bridge: " --placeholder "192.168.122.1" --value "192.168.122.1")
+        else
+            read -p "Enter gateway IP address for bridge [192.168.122.1]: " GATEWAY
+            [ -z "$GATEWAY" ] && GATEWAY="192.168.122.1"
+        fi
+    fi
+
+    if [ -z "$SUBNET" ]; then
+        # Default network CIDR is /24 based on gateway
+        local default_subnet
+        default_subnet=$(echo "$GATEWAY" | cut -d'.' -f1-3)".0/24"
+        if [ "$use_gum" = true ]; then
+            SUBNET=$(gum input --prompt "Enter full subnet network block (CIDR): " --placeholder "$default_subnet" --value "$default_subnet")
+        else
+            read -p "Enter full subnet network block (CIDR) [$default_subnet]: " SUBNET
+            [ -z "$SUBNET" ] && SUBNET="$default_subnet"
+        fi
+    fi
+
+    # Extract network CIDR suffix (e.g. 24) from subnet block
+    local cidr_suffix
+    cidr_suffix=$(echo "$SUBNET" | cut -d'/' -f2)
+
+    furnace_log_info "Attempting to create and configure $BRIDGE..."
+    create_bridge "$BRIDGE" "$GATEWAY" "$cidr_suffix" || { furnace_log_err "Failed to configure bridge interface."; exit 1; }
+
+    furnace_log_info "Configuring NAT rules..."
+    setup_nat_masquerade "$BRIDGE" "$SUBNET" || { furnace_log_err "Failed to configure host routing/NAT."; exit 1; }
+
+    echo ""
+    if [ "$use_gum" = true ]; then
+        gum style --foreground 82 --bold "✔ KVM-Furnace Host Bootstrap Complete Successfully!"
+    else
+        echo -e "\033[1;32m✔ KVM-Furnace Host Bootstrap Complete Successfully!\033[0m"
+    fi
+}
+
+# ==============================================================================
+# Main Execution Entrypoint
+# ==============================================================================
+main() {
+    # If interactive mode is selected
+    if [ "$INTERACTIVE" = true ]; then
+        run_interactive_wizard
+        exit 0
+    fi
+
+    # Otherwise validate parameters for standalone script runs
+    if [ -z "$BRIDGE" ] || [ -z "$SUBNET" ] || [ -z "$GATEWAY" ]; then
+        furnace_log_err "Missing mandatory parameters. You must supply --bridge, --subnet, and --gateway, or execute in --interactive mode."
+        show_help
+        exit 2
+    fi
+
+    # Run validations
+    check_virtualization || { furnace_log_err "Virtualization support check failed."; exit 1; }
+    enable_ip_forwarding || { furnace_log_err "Enabling IP forwarding failed."; exit 1; }
+
+    # Extract network CIDR suffix (e.g. 24) from subnet block
+    local cidr_suffix
+    cidr_suffix=$(echo "$SUBNET" | cut -d'/' -f2)
+
+    # Perform network creations
+    create_bridge "$BRIDGE" "$GATEWAY" "$cidr_suffix" || { furnace_log_err "Bridge creation failed."; exit 1; }
+    setup_nat_masquerade "$BRIDGE" "$SUBNET" || { furnace_log_err "NAT masquerading setup failed."; exit 1; }
+
+    furnace_log_info "KVM-Furnace has successfully tuned and bootstrapped the host environment!"
+}
+
+main "$@"
