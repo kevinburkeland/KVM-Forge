@@ -1,0 +1,61 @@
+#cloud-config
+users:
+  - name: PLACEHOLDER_USER
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - SSH_KEY_PLACEHOLDER
+disable_root: true
+ssh_pwauth: false
+hostname: PLACEHOLDER_HOSTNAME
+create_hostname_file: true
+fqdn: PLACEHOLDER_FQDN
+prefer_fqdn_over_hostname: true
+timezone: PLACEHOLDER_TIMEZONE
+package_update: true
+package_upgrade: true
+packages:
+  - htop
+  - ncdu
+  - qemu-guest-agent
+  - python3-dev
+  - python3-pip
+  - python3-venv
+  - build-essential
+  - curl
+runcmd:
+  - sudo systemctl enable --now qemu-guest-agent
+  - |
+    # Create a dedicated, unprivileged system user for running Jupyter
+    id -u jupyter &>/dev/null || useradd -m -s /bin/bash jupyter
+
+    # Create a Python virtual environment under the 'jupyter' user's home space
+    sudo -u jupyter python3 -m venv /home/jupyter/venv
+
+    # Upgrade pip inside the virtual environment
+    sudo -u jupyter /home/jupyter/venv/bin/python3 -m pip install --upgrade pip
+
+    # Install JupyterLab and requested data science packages inside the virtual environment
+    sudo -u jupyter /home/jupyter/venv/bin/python3 -m pip install jupyterlab pandas numpy matplotlib seaborn scikit-learn
+
+    # Dynamically write the systemd service file running as 'jupyter' using the virtual environment
+    cat <<EOF > /etc/systemd/system/jupyterlab.service
+    [Unit]
+    Description=JupyterLab Server Daemon
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=jupyter
+    Environment="PATH=/home/jupyter/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ExecStart=/home/jupyter/venv/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token='forge' --ServerApp.password=''
+    Restart=always
+    RestartSec=10
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+    # Reload systemd configuration and enable/start the JupyterLab service
+    systemctl daemon-reload
+    systemctl enable --now jupyterlab.service

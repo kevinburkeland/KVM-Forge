@@ -107,7 +107,7 @@ elif [[ "$1" == *".default_version" ]]; then
 elif [[ "$1" == *".supported_versions"* ]]; then
     echo "24.04"
 elif [[ "$1" == *".profiles | .[]" ]]; then
-    echo -e "base\npython\ndocker\ntesting"
+    echo -e "base\npython\ndocker\ntesting\njupyter-datascience"
 fi
 EOF
     chmod +x "$MOCK_DIR/yq"
