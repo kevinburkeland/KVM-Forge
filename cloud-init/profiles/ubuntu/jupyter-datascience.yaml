@@ -5,6 +5,8 @@ users:
     shell: /bin/bash
     ssh_authorized_keys:
       - SSH_KEY_PLACEHOLDER
+  - name: jupyter
+    shell: /bin/bash
 disable_root: true
 ssh_pwauth: false
 hostname: PLACEHOLDER_HOSTNAME
@@ -26,9 +28,6 @@ packages:
 runcmd:
   - sudo systemctl enable --now qemu-guest-agent
   - |
-    # Create a dedicated, unprivileged system user for running Jupyter
-    id -u jupyter &>/dev/null || useradd -m -s /bin/bash jupyter
-
     # Create a Python virtual environment under the 'jupyter' user's home space
     sudo -u jupyter python3 -m venv /home/jupyter/venv
 
