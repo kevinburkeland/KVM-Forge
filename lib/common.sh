@@ -15,12 +15,13 @@
 # Systems Engineering: Command Injection Prevention
 # Security validation: When reading external configuration or environment files, it is vital to perform
 # active input sanitization before sourcing the file into the running shell.
-# The regular expression ^FORGE_[A-Z0-9_]+=\"[^\`\$]*\"$ actively validates variables by:
+# The regular expression ^FORGE_[A-Z0-9_]+=\"[^\`\$\"\\]*\"$ actively validates variables by:
 # 1. Requiring the variable to start with the 'FORGE_' namespace and contain only alphanumeric characters and underscores.
 # 2. Enforcing that the value is strictly wrapped in double quotes.
-# 3. Utilizing negative character matching ([^\`\$]*) to reject backticks (`) and dollar signs ($).
-#    By blocking these characters, we prevent shell command substitution and variable expansion, neutralizing
-#    injection vulnerabilities where malicious shell payloads could execute upon sourcing the config file.
+# 3. Utilizing negative character matching ([^\`\$\"\\]*) to reject backticks (`), dollar signs ($),
+#    double quotes ("), and backslashes (\). By blocking these characters, we prevent quote breakouts,
+#    escapes, command substitutions, and variable expansions, neutralizing injection vulnerabilities
+#    where malicious shell payloads could execute upon sourcing the config file.
 # ==========================================
 validate_forge_env_file() {
     local file="$1"
@@ -28,7 +29,7 @@ validate_forge_env_file() {
 
     while IFS= read -r line || [ -n "$line" ]; do
         [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+=\"[^\`\$]*\"$ ]]; then
+        if ! [[ "$line" =~ ^FORGE_[A-Z0-9_]+=\"[^\`\$\"\\]*\"$ ]]; then
             return 1
         fi
     done < "$file"
@@ -431,7 +432,7 @@ verify_and_sync_image() {
     # Perform the hash validation
     if ! check_hash; then
         log_err "${upper_type} mismatch or file corrupt. Redownloading..."
-        rm -f "$local_file"
+        rm -f -- "$local_file"
         wget -q "$IMAGE_URL"
         
         # If it fails a second time, abort
@@ -449,7 +450,7 @@ verify_and_sync_image() {
     # Keep the libvirt base image in sync if it is missing or differs from the validated source image
     if [ ! -f "$LIBVIRT_IMG_PATH" ] || ! cmp -s "$local_file" "$LIBVIRT_IMG_PATH"; then
         log_info "Syncing base image to libvirt images directory..."
-        sudo install -m 640 "$local_file" "$LIBVIRT_IMG_PATH"
+        sudo install -m 640 -- "$local_file" "$LIBVIRT_IMG_PATH"
     fi
 }
 

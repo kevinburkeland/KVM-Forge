@@ -59,6 +59,9 @@ DETECTED_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timez
 
 FORGE_TIMEZONE=$(gum input --prompt "Timezone (e.g., $DETECTED_TZ): " --placeholder "$DETECTED_TZ" --value "${FORGE_TIMEZONE:-$DETECTED_TZ}")
 
+echo "Jupyter Lab Token: The access token for Jupyter Lab datascience profile VMs."
+FORGE_JUPYTER_TOKEN=$(gum input --prompt "Jupyter Lab Token: " --placeholder "forge" --value "${FORGE_JUPYTER_TOKEN:-forge}")
+
 # ==========================================
 # Systems Engineering: Cryptographic Standards & Key Generation (ED25519 vs RSA)
 # In securing non-interactive orchestration infrastructures, selecting the correct key format is vital:
@@ -128,6 +131,11 @@ elif [ "$SSH_CHOICE" == "Pull public key from GitHub" ]; then
             rm -f "$KEY_PATH"
             exit 1
         fi
+        if ! ssh-keygen -l -f "$KEY_PATH" &>/dev/null; then
+            log_err "Downloaded file does not contain valid SSH public keys."
+            rm -f "$KEY_PATH"
+            exit 1
+        fi
         log_info "Successfully downloaded keys to $KEY_PATH"
         FORGE_SSH_KEY_PATH="$KEY_PATH"
     else
@@ -163,6 +171,7 @@ FORGE_BASE_DOMAIN="$FORGE_BASE_DOMAIN"
 FORGE_DEFAULT_USER="$FORGE_DEFAULT_USER"
 FORGE_TIMEZONE="$FORGE_TIMEZONE"
 FORGE_SSH_KEY_PATH="$FORGE_SSH_KEY_PATH"
+FORGE_JUPYTER_TOKEN="$FORGE_JUPYTER_TOKEN"
 EOF
 
 # Restrict permissions so only the file owner can read or write to it.

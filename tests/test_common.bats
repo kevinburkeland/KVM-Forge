@@ -139,3 +139,63 @@ setup() {
     [ "$output" = "generic" ]
 }
 
+@test "validate_forge_env_file accepts valid settings and rejects malicious inputs" {
+    local env_file
+    env_file=$(mktemp)
+    
+    # 1. Test a valid configuration
+    cat << 'EOF' > "$env_file"
+# This is a comment
+FORGE_BRIDGE_IF="virbr0"
+FORGE_SUBNET_SCAN="192.168.122.64/26"
+FORGE_GATEWAY="192.168.122.1"
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -eq 0 ]
+    
+    # 2. Test invalid lines (no namespace)
+    cat << 'EOF' > "$env_file"
+INVALID_VAR="value"
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -ne 0 ]
+
+    # 3. Test invalid lines (unquoted)
+    cat << 'EOF' > "$env_file"
+FORGE_BRIDGE_IF=virbr0
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -ne 0 ]
+
+    # 4. Test command injection (backticks)
+    cat << 'EOF' > "$env_file"
+FORGE_BRIDGE_IF="`whoami`"
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -ne 0 ]
+
+    # 5. Test command injection (dollar sign / subshell)
+    cat << 'EOF' > "$env_file"
+FORGE_BRIDGE_IF="$(whoami)"
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -ne 0 ]
+
+    # 6. Test command injection (quote breakout / semicolon)
+    cat << 'EOF' > "$env_file"
+FORGE_DEFAULT_USER="forge\"; id; echo \""
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -ne 0 ]
+
+    # 7. Test command injection (quote breakout / backslash escape)
+    cat << 'EOF' > "$env_file"
+FORGE_DEFAULT_USER="forge\" && id"
+EOF
+    run validate_forge_env_file "$env_file"
+    [ "$status" -ne 0 ]
+    
+    rm -f "$env_file"
+}
+
+

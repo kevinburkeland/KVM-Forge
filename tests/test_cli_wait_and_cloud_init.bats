@@ -142,3 +142,12 @@ teardown() {
     run /bin/grep -q -- "-i $HOME/.ssh/id_kvmforge" "$CALL_LOG"
     [ "$status" -eq 0 ]
 }
+
+@test "wait_for_cloud_init includes FORGE_KNOWN_HOSTS in SSH options when set" {
+    export FORGE_KNOWN_HOSTS="/tmp/custom_known_hosts"
+    run wait_for_cloud_init
+    [ "$status" -eq 0 ]
+
+    run /bin/grep -q -- "-o UserKnownHostsFile=/tmp/custom_known_hosts" "$CALL_LOG"
+    [ "$status" -eq 0 ]
+}

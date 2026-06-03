@@ -392,3 +392,67 @@ EOF
 
     rm -rf "$TEMP_DIR"
 }
+
+@test "prepare_cloud_init_config substitutes JUPYTER_TOKEN_PLACEHOLDER in user-data" {
+    export NEWIP_YAML="192.168.1.44/24"
+    export NEWNAME="host44"
+    export NEWNAME_FQDN="host44.example.test"
+    export FORGE_GATEWAY="192.168.1.1"
+    export FORGE_DNS_SEARCH="example.test"
+    export FORGE_DNS_SERVERS="1.1.1.1"
+    export FORGE_TIMEZONE="UTC"
+    export FORGE_DEFAULT_USER="forge"
+    export FORGE_SSH_KEY_PATH="~/.ssh/id_ed25519.pub"
+    export FORGE_JUPYTER_TOKEN="mycustomjupytertoken"
+
+    local custom_user_data
+    custom_user_data="$(mktemp)"
+    cat > "$custom_user_data" <<'EOF'
+#cloud-config
+hostname: old-host
+fqdn: old-host.example
+timezone: old-tz
+user_name: old-user
+ssh_key: old-key
+token_line: --ServerApp.token='JUPYTER_TOKEN_PLACEHOLDER'
+EOF
+
+    prepare_cloud_init_config "$custom_user_data"
+
+    run grep -q "token_line: --ServerApp.token='mycustomjupytertoken'" "$TEMP_DIR/user-data"
+    [ "$status" -eq 0 ]
+
+    rm -f "$custom_user_data"
+}
+
+@test "prepare_cloud_init_config defaults JUPYTER_TOKEN_PLACEHOLDER to forge when unset" {
+    export NEWIP_YAML="192.168.1.45/24"
+    export NEWNAME="host45"
+    export NEWNAME_FQDN="host45.example.test"
+    export FORGE_GATEWAY="192.168.1.1"
+    export FORGE_DNS_SEARCH="example.test"
+    export FORGE_DNS_SERVERS="1.1.1.1"
+    export FORGE_TIMEZONE="UTC"
+    export FORGE_DEFAULT_USER="forge"
+    export FORGE_SSH_KEY_PATH="~/.ssh/id_ed25519.pub"
+    unset FORGE_JUPYTER_TOKEN
+
+    local custom_user_data
+    custom_user_data="$(mktemp)"
+    cat > "$custom_user_data" <<'EOF'
+#cloud-config
+hostname: old-host
+fqdn: old-host.example
+timezone: old-tz
+user_name: old-user
+ssh_key: old-key
+token_line: --ServerApp.token='JUPYTER_TOKEN_PLACEHOLDER'
+EOF
+
+    prepare_cloud_init_config "$custom_user_data"
+
+    run grep -q "token_line: --ServerApp.token='forge'" "$TEMP_DIR/user-data"
+    [ "$status" -eq 0 ]
+
+    rm -f "$custom_user_data"
+}

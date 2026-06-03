@@ -37,6 +37,13 @@ runcmd:
     # Install JupyterLab and requested data science packages inside the virtual environment
     sudo -u jupyter /home/jupyter/venv/bin/python3 -m pip install jupyterlab pandas numpy matplotlib seaborn scikit-learn
 
+    # Systems Engineering: Configurable Jupyter Access Token & IP Binding
+    # - By default, the Jupyter Lab server listens on IP 0.0.0.0. This allows headless servers to be accessed
+    #   remotely over the network.
+    # - To protect the environment against unauthorized access (since Jupyter provides shell access),
+    #   a configurable token is used.
+    # - The token placeholder JUPYTER_TOKEN_PLACEHOLDER is replaced dynamically at provision time by KVM-Forge
+    #   using the value of FORGE_JUPYTER_TOKEN defined in config/forge.env.
     # Dynamically write the systemd service file running as 'jupyter' using the virtual environment
     cat <<EOF > /etc/systemd/system/jupyterlab.service
     [Unit]
@@ -47,7 +54,7 @@ runcmd:
     Type=simple
     User=jupyter
     Environment="PATH=/home/jupyter/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    ExecStart=/home/jupyter/venv/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token='forge' --ServerApp.password=''
+    ExecStart=/home/jupyter/venv/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.token='JUPYTER_TOKEN_PLACEHOLDER' --ServerApp.password=''
     Restart=always
     RestartSec=10
 

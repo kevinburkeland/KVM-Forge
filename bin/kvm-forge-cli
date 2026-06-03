@@ -128,9 +128,9 @@ wait_for_cloud_init() {
     
     # SSH Options:
     # StrictHostKeyChecking=accept-new: Automatically accept the new fingerprint without prompting.
-    # UserKnownHostsFile=/dev/null: Don't save the fingerprint (since VMs are volatile).
+    # UserKnownHostsFile: Use a transient isolated known_hosts file if set to protect against MitM, otherwise fallback.
     # ConnectTimeout=5: Fail fast if the connection hangs.
-    local -a SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
+    local -a SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="${FORGE_KNOWN_HOSTS:-/dev/null}" -o ConnectTimeout=5)
     
     # If a custom SSH key was specified in setup, we inject it into the command
     if [ -n "${FORGE_SSH_KEY_PATH:-}" ]; then
@@ -175,6 +175,11 @@ wait_for_cloud_init() {
 
 # The main function orchestrates the flow
 main() {
+    # Generate a transient known hosts file for isolated verification during bootstrap to prevent MitM
+    FORGE_KNOWN_HOSTS=$(mktemp)
+    export FORGE_KNOWN_HOSTS
+    trap 'rm -f "${FORGE_KNOWN_HOSTS}"' EXIT
+
     # Inherited from common.sh, this parses the command-line flags (-d, -p, etc.)
     parse_vm_args "$@"
 

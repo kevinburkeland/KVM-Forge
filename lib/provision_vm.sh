@@ -190,6 +190,9 @@ EOF
         export FORGE_DEFAULT_USER
         yq_edit "$TEMP_DIR/user-data" '.users[0].name = env(FORGE_DEFAULT_USER)'
     fi
+
+    # Replace the Jupyter Lab token placeholder if it exists in the user-data profile
+    sed -i "s@JUPYTER_TOKEN_PLACEHOLDER@${FORGE_JUPYTER_TOKEN:-forge}@g" "$TEMP_DIR/user-data"
 }
 
 # ==========================================
@@ -218,7 +221,7 @@ launch_vm() {
         log_err "The 'ip' command is required to validate bridge state."
         exit 1
     fi
-    if ! ip link show "$BRIDGE_IF" >/dev/null 2>&1; then
+    if ! ip link show dev "$BRIDGE_IF" >/dev/null 2>&1; then
         log_err "Bridge interface '$BRIDGE_IF' not found."
         exit 1
     fi
@@ -290,7 +293,7 @@ main() {
     # This prevents directory leakage, protects the host's temp filesystem from bloating, and ensures no sensitive
     # plain-text cloud-init variables or SSH keys are left lying around in the host's temporary storage.
     # ==========================================
-    trap 'rm -rf "$TEMP_DIR"' EXIT
+    trap 'rm -rf -- "$TEMP_DIR"' EXIT
     prepare_cloud_init_config "$USER_DATA_FILE"
     
     launch_vm
