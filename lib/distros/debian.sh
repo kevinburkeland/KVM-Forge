@@ -46,7 +46,7 @@ download_os_image() {
     
     local target_img_name="debian-${VERSION}-generic-amd64.qcow2"
     local os_variant="debian${VERSION}"
-    local checksum_file="SHA512SUMS"
+    local checksum_file="debian-${VERSION}-SHA512SUMS"
     
     local image_url="https://cloud.debian.org/images/cloud/${CODENAME}/latest/${target_img_name}"
     local checksum_url="https://cloud.debian.org/images/cloud/${CODENAME}/latest/SHA512SUMS"

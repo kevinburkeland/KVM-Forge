@@ -22,6 +22,7 @@ MD5SUMS
 *.img
 *.qcow2
 *.sha256
+*x86_64-CHECKSUM
 latest-di-amd64-cloudinit.txt
 host/*.img
 host/*.qcow2

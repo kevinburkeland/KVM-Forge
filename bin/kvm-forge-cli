@@ -28,7 +28,16 @@ execute_provisioner() {
 
     # Run the core provisioning script with elevated privileges using sudo.
     # We capture all standard output into a variable so we can parse out the VM details.
-    RAW_OUTPUT=$(sudo "$PROVISION_SCRIPT" -d "$DISTRO" -p "$PROFILE" -c "$VCPU" -m "$MEMORY" -s "$DISK_SIZE" $VERSION_FLAG)
+    # We append '|| exit_code=$?' to capture failure exit codes instead of letting set -e silently abort the script.
+    local exit_code=0
+    RAW_OUTPUT=$(sudo "$PROVISION_SCRIPT" -d "$DISTRO" -p "$PROFILE" -c "$VCPU" -m "$MEMORY" -s "$DISK_SIZE" $VERSION_FLAG) || exit_code=$?
+
+    if [ "$exit_code" -ne 0 ]; then
+        log_err "Provisioning script failed with exit code $exit_code."
+        log_err "Raw output was:"
+        echo "$RAW_OUTPUT" >&2
+        exit "$exit_code"
+    fi
 
     # The provision_vm.sh script is designed to print the Name, IP, and Username as its final three lines.
     # We use 'tail' and 'head' to extract those specific lines into variables.

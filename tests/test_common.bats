@@ -69,3 +69,73 @@ setup() {
     [ "$DISTRO" = "alma" ]
     [ "$VERSION" = "10" ]
 }
+
+@test "resolve_supported_os_variant bypasses check when BATS_RUNNING is set" {
+    export BATS_RUNNING="true"
+    run resolve_supported_os_variant "fedora44"
+    [ "$status" -eq 0 ]
+    [ "$output" = "fedora44" ]
+}
+
+@test "resolve_supported_os_variant falls back correctly when BATS_RUNNING is unset" {
+    # Save the original BATS_RUNNING state
+    local saved_bats="${BATS_RUNNING:-}"
+    unset BATS_RUNNING
+    
+    # Mock virt-install inside this subshell
+    virt-install() {
+        if [[ "$*" == *"--osinfo name=fedora44"* ]]; then
+            return 1
+        elif [[ "$*" == *"--osinfo name=fedora42"* ]]; then
+            return 0
+        elif [[ "$*" == *"--osinfo list"* ]]; then
+            echo "fedora42"
+            echo "fedora41"
+            echo "fedora40"
+            return 0
+        else
+            return 1
+        fi
+    }
+    
+    # Export mock function so it is available to subshells if needed
+    export -f virt-install
+    
+    run resolve_supported_os_variant "fedora44"
+    
+    # Restore original state
+    if [ -n "$saved_bats" ]; then
+        export BATS_RUNNING="$saved_bats"
+    fi
+    unset -f virt-install
+    
+    [ "$status" -eq 0 ]
+    [ "$output" = "fedora42" ]
+}
+
+@test "resolve_supported_os_variant falls back to generic if no candidates are supported" {
+    local saved_bats="${BATS_RUNNING:-}"
+    unset BATS_RUNNING
+    
+    virt-install() {
+        if [[ "$*" == *"--osinfo list"* ]]; then
+            return 0
+        elif [[ "$*" == *"--osinfo name=generic"* ]]; then
+            return 0
+        else
+            return 1
+        fi
+    }
+    export -f virt-install
+    
+    run resolve_supported_os_variant "fedora44"
+    
+    if [ -n "$saved_bats" ]; then
+        export BATS_RUNNING="$saved_bats"
+    fi
+    unset -f virt-install
+    
+    [ "$status" -eq 0 ]
+    [ "$output" = "generic" ]
+}
+

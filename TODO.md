@@ -7,7 +7,7 @@ A running list of planned improvements and additions.
 ## 🐧 Distros
 
 - [x] Add **Debian** support (cloud image + checksum handling)
-- [/] Add **Gentoo** support (base profile verified; remaining profiles in progress due to high compile-time verification overhead; currently in the `features-no-one-asked-for` branch)
+- [x] Add **Gentoo** support
 - [ ] Add **Fedora** support
 - [ ] Add **Rocky Linux** support
 - [ ] Add **openSUSE** support
@@ -60,17 +60,16 @@ A running list of planned improvements and additions.
 
 - [x] Package `setup.sh` dependency checks into `lib/common.sh`
 - [x] Refactor TUI and CLI menus to use a dynamic, centralized `manifest.yaml`
-- [ ] Add a `kvm-forge-destroy` script to cleanly remove a VM and its disk
-- [ ] Support reading default flag values from `config/forge.env`
-- [ ] GitHub Actions CI to run bats test suite on push
+- [ ] Add a `kvm-forge-destroy` script to cleanly remove a VM and its disk 
+- [x] Support reading default flag values from `config/forge.env`
+- [x] GitHub Actions CI to run bats test suite on push
 - [ ] Add shellcheck linting and enforce it in CI
-- [ ] Expand env-file validation to support safe escaped values while rejecting command substitution
+- [x] Expand env-file validation to support safe escaped values while rejecting command substitution
 
 ---
 
 ## 🛠️ Future Distributed Architecture (KVM-Blacksmith)
 
-- [ ] Refactor KVM-Forge to support remote hypervisors (Anvils) via `run_cmd` / SSH wrappers
 - [ ] Extract host environment configuration into a dedicated tuner (KVM-Furnace)
 - [ ] Design KVM-Ingot for unified shared storage (Ceph/SAN) to enable live VM migrations
-- [ ] Architect KVM-Blacksmith as the central orchestrator scheduler
+- [x] Build KVM-Blacksmith as the central orchestrator scheduler

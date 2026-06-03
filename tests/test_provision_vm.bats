@@ -250,3 +250,57 @@ EOF
     [ "$OS_VARIANT" = "gentoo" ]
 }
 
+@test "fedora interface name matches predictable virtio naming" {
+    source "${BATS_TEST_DIRNAME}/../lib/distros/fedora.sh"
+
+    [ "$(get_interface_name)" = "enp1s0" ]
+}
+
+@test "download_os_image selects Fedora latest image" {
+    export DISTRO="fedora"
+    export VERSION="44"
+
+    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
+
+    cat << 'EOF' > "${MOCK_DIR}/wget"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/wget"
+
+    cat << 'EOF' > "${MOCK_DIR}/sha256sum"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/sha256sum"
+
+    cat << 'EOF' > "${MOCK_DIR}/grep"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/grep"
+
+    cat << 'EOF' > "${MOCK_DIR}/cp"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/cp"
+
+    cat << 'EOF' > "${MOCK_DIR}/chmod"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/chmod"
+
+    cat << 'EOF' > "${MOCK_DIR}/install"
+#!/bin/bash
+exit 0
+EOF
+    chmod +x "${MOCK_DIR}/install"
+
+    download_os_image
+    [ "$IMG_NAME" = "Fedora-Cloud-Base-Generic-44-latest.x86_64.qcow2" ]
+    [ "$OS_VARIANT" = "fedora44" ]
+}
+
+

@@ -19,3 +19,7 @@ distros:
     default_version: "latest"
     supported_versions: ["latest"]
     profiles: ["base", "docker", "python", "testing"]
+  fedora:
+    default_version: "44"
+    supported_versions: ["43", "44"]
+    profiles: ["base", "docker", "python", "testing"]

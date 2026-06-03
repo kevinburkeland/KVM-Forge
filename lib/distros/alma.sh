@@ -19,7 +19,7 @@ get_interface_name() {
 download_os_image() {
     local target_img_name="AlmaLinux-${VERSION}-GenericCloud-latest.x86_64.qcow2"
     local os_variant="almalinux${VERSION}"
-    local checksum_file="CHECKSUM"
+    local checksum_file="alma-${VERSION}-CHECKSUM"
     
     local image_url="https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/${target_img_name}"
     local checksum_url="https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/CHECKSUM"

@@ -19,7 +19,7 @@ get_interface_name() {
 download_os_image() {
     local target_img_name="ubuntu-${VERSION}-server-cloudimg-amd64.img"
     local os_variant="ubuntu${VERSION}"
-    local checksum_file="MD5SUMS"
+    local checksum_file="ubuntu-${VERSION}-MD5SUMS"
     
     local image_url="https://cloud-images.ubuntu.com/releases/${VERSION}/release/${target_img_name}"
     local checksum_url="https://cloud-images.ubuntu.com/releases/${VERSION}/release/MD5SUMS"
