@@ -1,0 +1,70 @@
+#cloud-config
+users:
+  - name: PLACEHOLDER_USER
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - SSH_KEY_PLACEHOLDER
+disable_root: true
+ssh_pwauth: false
+hostname: PLACEHOLDER_HOSTNAME
+create_hostname_file: true
+fqdn: PLACEHOLDER_FQDN
+prefer_fqdn_over_hostname: true
+timezone: PLACEHOLDER_TIMEZONE
+package_update: true
+package_upgrade: true
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+packages:
+  - htop
+  - ncdu
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+  - qemu-guest-agent
+runcmd:
+  - sudo systemctl enable --now qemu-guest-agent
+  - |
+    # Create config directory for Home Assistant persistent storage
+    mkdir -p /var/lib/homeassistant
+
+    # Systems Engineering: Systemd Service for Container Lifecycles
+    # - Using a native systemd unit file is the most robust way to manage Docker containers in production.
+    # - It ensures the container starts automatically on VM boot (After=docker.service).
+    # - ExecStartPre hooks ensure any stale/crashed containers from previous runs are cleaned up before starting.
+    # - The container runs with host networking (--network=host) to support auto-discovery protocols (mDNS/UPnP)
+    #   and privileged mode (--privileged) to grant direct access to USB devices (Zigbee/Z-Wave/Bluetooth dongles).
+    cat <<'EOF' > /etc/systemd/system/home-assistant.service
+    [Unit]
+    Description=Home Assistant Service
+    After=docker.service
+    Requires=docker.service
+
+    [Service]
+    Type=simple
+    TimeoutStartSec=0
+    Restart=always
+    ExecStartPre=-/usr/bin/docker stop home-assistant
+    ExecStartPre=-/usr/bin/docker rm home-assistant
+    ExecStartPre=/usr/bin/docker pull ghcr.io/home-assistant/home-assistant:stable
+    ExecStart=/usr/bin/docker run --name home-assistant \
+      --privileged \
+      --restart=no \
+      -v /etc/localtime:/etc/localtime:ro \
+      -v /var/lib/homeassistant:/config \
+      --network=host \
+      ghcr.io/home-assistant/home-assistant:stable
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+    # Reload systemd configuration and enable/start the Home Assistant service
+    systemctl daemon-reload
+    systemctl enable --now home-assistant.service

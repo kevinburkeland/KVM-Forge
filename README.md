@@ -11,7 +11,7 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 - **Automated Provisioning:** Uses `cloud-init` and `virt-install` to bootstrap new VMs with your SSH keys, custom users, and security hardening (disabled root SSH & password auth).
 - **Dynamic Networking:** Automatically scans your local subnet with `nmap`, identifies active IPs, and assigns the first available IP address to your new VM.
 - **Dynamic Thematic VM Naming:** Automatically assigns hostnames from curated theme-based name lists and avoids collisions with existing VM names.
-- **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, `python`, `testing`, and `jupyter-datascience` (Ubuntu only).
+- **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, `python`, `testing`, `home-assistant` (Ubuntu only), and `jupyter-datascience` (Ubuntu only).
 - **Interactive TUI:** Includes both a `setup.sh` configuration wizard and a `kvm-forge-tui` provisioner, both powered by `gum`, for a guided Terminal UI experience without needing to memorize flags.
 - **Manifest-Driven Architecture:** Uses a central `manifest.yaml` to dynamically generate TUI menus, define default OS versions, and strictly enforce which software profiles are supported by each distribution.
 - **Hardened Runtime Behavior:** Includes bounded SSH/ping wait loops, bridge preflight checks, and stricter shell safety defaults in entrypoints.
@@ -61,7 +61,7 @@ bin/kvm-forge-cli --distro alma --profile docker --cpus 4 --memory 8192 --disk-s
 
 - `-d, --distro` : Distro to use (`ubuntu`, `debian`, `alma`, `gentoo`, or `fedora`, default: `ubuntu`)
 - `-v, --version` : Distro version (default: `24.04` for ubuntu, `12` for debian, `10` for alma, `latest` for gentoo, `44` for fedora)
-- `-p, --profile` : Software profile to use (`base`, `docker`, `python`, `testing`, `jupyter-datascience`)
+- `-p, --profile` : Software profile to use (`base`, `docker`, `python`, `testing`, `home-assistant`, `jupyter-datascience`)
 - `-c, --cpus` : Number of vCPUs (default: 4)
 - `-m, --memory` : Memory in MB (default: 8192)
 - `-s, --disk-size`: Disk size in GB (default: 30)
