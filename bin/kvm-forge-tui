@@ -21,13 +21,13 @@ gather_inputs() {
     fi
 
     gum style --foreground 99 --bold "Select a distro:"
-    AVAILABLE_DISTROS=$(cat "$MANIFEST_FILE" | yq '.distros | keys | .[]')
+    AVAILABLE_DISTROS=$(yq '.distros | keys | .[]' "$MANIFEST_FILE")
     mapfile -t DISTRO_ARRAY <<< "$AVAILABLE_DISTROS"
     DISTRO=$(gum choose --selected "ubuntu" "${DISTRO_ARRAY[@]}")
 
     # ── Version ─────────────────────────────────────────────────────────────────
-    DEFAULT_VERSION=$(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.default_version")
-    VERSION_HINT="e.g. $(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.supported_versions | join(\", \")")"
+    DEFAULT_VERSION=$(yq ".distros.${DISTRO}.default_version" "$MANIFEST_FILE")
+    VERSION_HINT="e.g. $(yq ".distros.${DISTRO}.supported_versions | join(\", \")" "$MANIFEST_FILE")"
 
     gum style --foreground 99 --bold "Distro version (${VERSION_HINT}):"
     VERSION=$(gum input --placeholder "$DEFAULT_VERSION" --value "$DEFAULT_VERSION")
@@ -35,7 +35,7 @@ gather_inputs() {
 
     # ── Profile ─────────────────────────────────────────────────────────────────
     gum style --foreground 99 --bold "Select a profile for $DISTRO:"
-    VALID_PROFILES=$(cat "$MANIFEST_FILE" | yq ".distros.${DISTRO}.profiles | .[]")
+    VALID_PROFILES=$(yq ".distros.${DISTRO}.profiles | .[]" "$MANIFEST_FILE")
     mapfile -t PROFILE_ARRAY <<< "$VALID_PROFILES"
     PROFILE=$(gum choose --selected "base" "${PROFILE_ARRAY[@]}")
 
@@ -107,7 +107,9 @@ execute_cli() {
 }
 
 main() {
-    check_and_install_dependencies "gum" "libvirt-daemon"
+    if [ -z "${BATS_RUNNING:-}" ]; then
+        check_and_install_dependencies "gum" "libvirt-daemon"
+    fi
     
     gather_inputs
     show_summary_and_confirm

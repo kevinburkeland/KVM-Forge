@@ -219,3 +219,9 @@ teardown() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"Failed to install yq."* ]]
 }
+
+@test "dependency checker accepts libvirt-daemon when runtime indicators exist after install" {
+    run bash -c "export BATS_RUNNING=true; export PATH='$MOCK_DIR':\$PATH; command(){ if [[ \"\$1\" == \"-v\" && \"\$2\" == \"libvirtd\" ]]; then return 1; fi; if [[ \"\$1\" == \"-v\" && \"\$2\" == \"virtqemud\" ]]; then return 1; fi; if [[ \"\$1\" == \"-v\" && \"\$2\" == \"kvm-ok\" ]]; then return 0; fi; builtin command \"\$@\"; }; read(){ REPLY=y; return 0; }; source '$REPO_ROOT/lib/common.sh'; check_and_install_dependencies libvirt-daemon; echo OK"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"OK"* ]]
+}

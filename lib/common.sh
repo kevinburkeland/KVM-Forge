@@ -76,20 +76,26 @@ log_err() {
 check_and_install_dependencies() {
     local cmds=("$@")
     local MISSING_CMDS=""
+
+    # Returns success when a dependency label is satisfied on this host.
+    # For package labels like libvirt-daemon, this checks real runtime indicators
+    # rather than assuming the label is an executable on PATH.
+    is_dependency_satisfied() {
+        local dep="$1"
+
+        if [ "$dep" = "libvirt-daemon" ]; then
+            if command -v libvirtd &> /dev/null || command -v virtqemud &> /dev/null || [ -f /usr/sbin/libvirtd ] || [ -f /usr/sbin/virtqemud ] || systemctl status libvirtd &> /dev/null || systemctl status virtqemud.service &> /dev/null || command -v kvm-ok &> /dev/null; then
+                return 0
+            fi
+            return 1
+        fi
+
+        command -v "$dep" &> /dev/null
+    }
     
     # Loop through each provided command and check if it's available in the system PATH
     for cmd in "${cmds[@]}"; do
-        if [ "$cmd" = "libvirt-daemon" ]; then
-            if command -v libvirtd &> /dev/null || command -v virtqemud &> /dev/null || [ -f /usr/sbin/libvirtd ] || [ -f /usr/sbin/virtqemud ] || systemctl status libvirtd &> /dev/null || systemctl status virtqemud.service &> /dev/null || command -v kvm-ok &> /dev/null; then
-                continue
-            else
-                MISSING_CMDS="$MISSING_CMDS $cmd"
-                continue
-            fi
-        fi
-        
-        local check_cmd="$cmd"
-        if ! command -v "$check_cmd" &> /dev/null; then
+        if ! is_dependency_satisfied "$cmd"; then
             MISSING_CMDS="$MISSING_CMDS $cmd"
         fi
     done
@@ -150,7 +156,7 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
             
             # Double check that the installation succeeded
             for cmd in $MISSING_CMDS; do
-                if ! command -v "$cmd" &> /dev/null; then
+                if ! is_dependency_satisfied "$cmd"; then
                     log_err "Failed to install $cmd. Please install it manually."
                     exit 1
                 fi
