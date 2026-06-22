@@ -132,7 +132,7 @@ check_and_install_dependencies() {
                             ;;
                         yq) sudo snap install yq || sudo apt-get install -y yq ;;
                         virt-install) sudo apt-get install -y virtinst ;;
-                        nmap) sudo apt-get install -y nmap ;;
+                        arping) sudo apt-get install -y arping ;;
                         wget) sudo apt-get install -y wget ;;
 			            libvirt-daemon) sudo apt-get install -y libvirt-daemon ;;
                         # Coreutils provides multiple basic binaries like shuf and md5sum
@@ -156,7 +156,7 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
                             ;;
                         yq) sudo dnf install -y yq ;;
                         virt-install) sudo dnf install -y virt-install ;;
-                        nmap) sudo dnf install -y nmap ;;
+                        arping) sudo dnf install -y arping ;;
                         wget) sudo dnf install -y wget ;;
 			            libvirt-daemon) sudo dnf install -y libvirt-daemon ;;
                         shuf|md5sum|sha256sum) sudo dnf install -y coreutils ;;

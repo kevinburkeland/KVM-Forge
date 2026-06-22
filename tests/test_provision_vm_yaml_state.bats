@@ -80,22 +80,13 @@ EOF
     # Required mocks per rule.
     make_mock "virt-install" 'echo "virt-install $*" >> "$CALL_LOG"; exit 0'
     make_mock "wget" 'echo "wget $*" >> "$CALL_LOG"; exit 0'
-    make_mock "nmap" '
- echo "nmap $*" >> "$CALL_LOG"
- if [[ "$*" == *"-sL"* ]]; then
-   cat <<INNER
-Nmap scan report for 192.168.1.10
-Nmap scan report for 192.168.1.11
-Nmap scan report for 192.168.1.12
-Nmap scan report for 192.168.1.13
-Nmap scan report for 192.168.1.14
-INNER
- elif [[ "$*" == *"-sn"* ]]; then
-   cat <<INNER
-Host: 192.168.1.11 ()\tStatus: Up
-INNER
+    make_mock "arping" '
+ echo "arping $*" >> "$CALL_LOG"
+ target="${@: -1}"
+ if [[ "$target" == "192.168.1.9" || "$target" == "192.168.1.10" || "$target" == "192.168.1.11" ]]; then
+   exit 0
  fi
- exit 0
+ exit 1
  '
     make_mock "ping" 'echo "ping $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh" 'echo "ssh $*" >> "$CALL_LOG"; exit 0'
@@ -261,7 +252,7 @@ teardown() {
 }
 
 @test "get_available_ip excludes network broadcast and occupied hosts" {
-    export SUBNET_SCAN="192.168.1.0/24"
+    export SUBNET_SCAN="192.168.1.10/29"
     export CIDR_SUFFIX="24"
 
     get_available_ip
@@ -272,25 +263,13 @@ teardown() {
 }
 
 @test "get_available_ip exits when no free addresses remain" {
-    cat > "$MOCK_DIR/nmap" <<'EOF'
+    export SUBNET_SCAN="192.168.1.10/29"
+    export CIDR_SUFFIX="24"
+    cat > "$MOCK_DIR/arping" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$*" == *"-sL"* ]]; then
-  cat <<INNER
-Nmap scan report for 192.168.1.10
-Nmap scan report for 192.168.1.11
-Nmap scan report for 192.168.1.12
-Nmap scan report for 192.168.1.13
-Nmap scan report for 192.168.1.14
-INNER
-elif [[ "$*" == *"-sn"* ]]; then
-  cat <<INNER
-Host: 192.168.1.11 ()\tStatus: Up
-Host: 192.168.1.12 ()\tStatus: Up
-Host: 192.168.1.13 ()\tStatus: Up
-INNER
-fi
+exit 0
 EOF
-    chmod +x "$MOCK_DIR/nmap"
+    chmod +x "$MOCK_DIR/arping"
 
     run get_available_ip
     [ "$status" -ne 0 ]

@@ -47,7 +47,7 @@ EOF
     # Required command mocks per project rule.
     make_mock "virt-install" 'echo "virt-install $*" >> "$CALL_LOG"; exit 0'
     make_mock "wget" 'echo "wget $*" >> "$CALL_LOG"; exit 0'
-    make_mock "nmap" 'echo "nmap $*" >> "$CALL_LOG"; exit 0'
+    make_mock "arping" 'echo "arping $*" >> "$CALL_LOG"; exit 0'
     make_mock "ping" 'echo "ping $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh" 'echo "ssh $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh-keygen" 'echo "ssh-keygen $*" >> "$CALL_LOG"; exit 0'

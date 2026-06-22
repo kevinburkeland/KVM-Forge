@@ -233,7 +233,7 @@ if ! ip link show "$FORGE_BRIDGE_IF" >/dev/null 2>&1; then
             fi
         else
             # Deduce the full network block from the gateway and CIDR suffix,
-            # keeping the nmap scan range subset strictly isolated for KVM-Forge VM allocation.
+            # keeping the arping scan range subset strictly isolated for KVM-Forge VM allocation.
             # Avoid using 'local' keyword outside a function to prevent shell crashes.
             full_subnet=$(calculate_subnet_base "$FORGE_GATEWAY" "$FORGE_CIDR_SUFFIX")
             

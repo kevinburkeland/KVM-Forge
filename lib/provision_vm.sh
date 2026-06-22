@@ -20,16 +20,69 @@ CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-24}"
 
 
 # ==========================================
+# Function: expand_cidr
+# Mechanism: Generates a list of all IP addresses within the specified CIDR block.
+# ==========================================
+expand_cidr() {
+    local cidr="$1"
+    local ip="${cidr%/*}"
+    local mask="${cidr#*/}"
+    
+    # Fallback to 24 if no CIDR mask is specified
+    if [[ "$ip" == "$mask" ]]; then
+        mask=24
+    fi
+
+    local o1 o2 o3 o4
+    IFS=. read -r o1 o2 o3 o4 <<< "$ip"
+    local ip_int=$(( (o1 << 24) + (o2 << 16) + (o3 << 8) + o4 ))
+    
+    # Calculate wildcard mask / size
+    local num_hosts=$(( 1 << (32 - mask) ))
+    
+    # Calculate network address by zeroing out host bits
+    local mask_int=$(( (0xFFFFFFFF << (32 - mask)) & 0xFFFFFFFF ))
+    local net_int=$(( ip_int & mask_int ))
+    
+    for ((i=0; i<num_hosts; i++)); do
+        local curr=$(( net_int + i ))
+        local n1=$(( (curr >> 24) & 255 ))
+        local n2=$(( (curr >> 16) & 255 ))
+        local n3=$(( (curr >> 8) & 255 ))
+        local n4=$(( curr & 255 ))
+        echo "${n1}.${n2}.${n3}.${n4}"
+    done
+}
+
+# ==========================================
+# Function: run_arping
+# Mechanism: Runs arping to check if an IP is active on the network.
+# Adapts timeout flags dynamically based on the installed arping version:
+# - Thomas Habets version: -w is in microseconds (uses 100000 usec / 100ms).
+# - iputils version: -W is in seconds (uses 1 second).
+# ==========================================
+run_arping() {
+    local target_ip="$1"
+    
+    # If arping output contains "Thomas Habets", customize flags accordingly
+    if sudo arping -h 2>&1 | grep -q "Thomas Habets"; then
+        sudo arping -c 1 -w 100000 -I "$BRIDGE_IF" "$target_ip" >/dev/null 2>&1
+    else
+        sudo arping -c 1 -W 1 -I "$BRIDGE_IF" "$target_ip" >/dev/null 2>&1
+    fi
+}
+
+# ==========================================
 # Function: get_available_ip
-# Mechanism: Uses 'nmap' to scan the designated subnet and finds an IP that isn't currently responding.
-# Networking Context: It first does a List Scan (-sL) to generate all possible IPs in the CIDR block,
-# removes the network (.0) and broadcast (.255) addresses, then does a Ping Sweep (-sn) to find
-# active hosts. Finally, it picks a random IP from the remaining unused pool to avoid conflicts.
+# Mechanism: Uses 'arping' to scan the designated subnet and finds an IP that isn't currently responding.
+# Networking Context: It first expands the CIDR block to generate all possible IPs,
+# removes the network (.0) and broadcast (.255) addresses, then performs an ARP ping check on
+# shuffled candidates. Finally, it picks the first IP that doesn't respond to avoid conflicts.
 # ==========================================
 get_available_ip() {
-    # Perform a fast List Scan (-sL) with nmap to list all theoretically possible IPs in the subnet.
+    # Generate all theoretically possible IPs in the subnet using expand_cidr.
     # mapfile stores the output directly into a bash array called 'all_ips'.
-    mapfile -t all_ips < <(nmap -sL -n "$SUBNET_SCAN" | awk '/Nmap scan report for/{print $5}')
+    mapfile -t all_ips < <(expand_cidr "$SUBNET_SCAN")
     
     # Strip the first IP (network address) and last IP (broadcast address) from the array,
     # as these cannot be assigned to a host.
@@ -37,15 +90,12 @@ get_available_ip() {
         all_ips=("${all_ips[@]:1:${#all_ips[@]}-2}")
     fi
 
-    # Perform a ping sweep (-sn) to find all IPs that are currently active (Up).
-    mapfile -t up_ips < <(sudo nmap -n -sn "$SUBNET_SCAN" -oG - | awk '/Up$/{ print $2 }')
-
     AVAILABLE_IP=""
     
     # Randomize the IP list using 'shuf' and iterate through them.
-    # The first one we find that isn't in the 'up_ips' array becomes our VM's new IP.
+    # The first one we find that doesn't respond to arping becomes our VM's new IP.
     for ip in $(printf "%s\n" "${all_ips[@]}" | shuf); do
-        if [[ ! " ${up_ips[*]} " =~ " ${ip} " ]]; then
+        if ! run_arping "$ip"; then
             AVAILABLE_IP=$ip
             break
         fi
@@ -252,7 +302,7 @@ launch_vm() {
 # The main execution function
 main() {
     # Verify we have all required utilities installed
-    check_and_install_dependencies "yq" "virt-install" "nmap" "shuf" "wget" "md5sum" "sha256sum" "libvirt-daemon"
+    check_and_install_dependencies "yq" "virt-install" "arping" "shuf" "wget" "md5sum" "sha256sum" "libvirt-daemon"
     
     # Parse CLI flags into variables (e.g., -d ubuntu -c 4)
     parse_vm_args "$@"

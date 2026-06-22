@@ -43,7 +43,7 @@ EOF
     # Required mocks per project rule: never call real infrastructure commands.
     make_mock "virt-install" 'echo "virt-install $*" >> "$CALL_LOG"; exit 0'
     make_mock "wget" 'echo "wget $*" >> "$CALL_LOG"; exit 0'
-    make_mock "nmap" 'echo "nmap $*" >> "$CALL_LOG"; exit 0'
+    make_mock "arping" 'echo "arping $*" >> "$CALL_LOG"; exit 0'
     make_mock "ping" 'echo "ping $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh" 'echo "ssh $*" >> "$CALL_LOG"; exit 0'
     make_mock "ssh-keygen" 'echo "ssh-keygen $*" >> "$CALL_LOG"; exit 0'
@@ -60,7 +60,7 @@ EOF
  if [[ "$1" == "install" ]]; then
    pkg="${@: -1}"
    case "$pkg" in
-     gum|yq|virtinst|nmap|wget|coreutils)
+     gum|yq|virtinst|arping|wget|coreutils)
        cmd_name="$pkg"
        [[ "$pkg" == "virtinst" ]] && cmd_name="virt-install"
        [[ "$pkg" == "coreutils" ]] && cmd_name="shuf"
@@ -85,7 +85,7 @@ INNER
  if [[ "$1" == "install" ]]; then
    pkg="${@: -1}"
    case "$pkg" in
-     gum|yq|virt-install|nmap|wget|coreutils)
+     gum|yq|virt-install|arping|wget|coreutils)
        cmd_name="$pkg"
        cat > "$MOCK_DIR/$cmd_name" <<INNER
 #!/usr/bin/env bash

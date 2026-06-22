@@ -18,31 +18,27 @@ setup() {
     # ==========================================
     # Systems Engineering: Intercepting Binaries via PATH Manipulation
     # - How it works: Prepending MOCK_DIR to the system PATH environment variable allows mock versions of
-    #   commands like nmap, virsh, and sudo to intercept and capture actual execution arguments during testing.
+    #   commands like arping, virsh, and sudo to intercept and capture actual execution arguments during testing.
     # ==========================================
 
     # We need to set some environment variables that the script expects
     export SCRIPT_DIR="${BATS_TEST_DIRNAME}/../lib"
     export CLOUD_INIT_DIR="${BATS_TEST_DIRNAME}/mock_cloud_init"
     export FORGE_BRIDGE_IF="testbridge"
-    export FORGE_SUBNET_SCAN="192.168.1.0/24"
+    export FORGE_SUBNET_SCAN="192.168.1.0/29"
     export DISTRO="ubuntu"
     export VERSION="24.04"
     
-    # Create mock nmap
-    cat << 'EOF' > "${MOCK_DIR}/nmap"
+    # Create mock arping
+    cat << 'EOF' > "${MOCK_DIR}/arping"
 #!/bin/bash
-if [[ "$*" == *"-sL"* ]]; then
-    echo "Nmap scan report for 192.168.1.0"
-    echo "Nmap scan report for 192.168.1.1"
-    echo "Nmap scan report for 192.168.1.2"
-    echo "Nmap scan report for 192.168.1.3"
-    echo "Nmap scan report for 192.168.1.255"
-elif [[ "$*" == *"-sn"* ]]; then
-    echo "Host: 192.168.1.1 ()	Status: Up"
+target="${@: -1}"
+if [[ "$target" == "192.168.1.1" || "$target" == "192.168.1.4" || "$target" == "192.168.1.5" || "$target" == "192.168.1.6" ]]; then
+    exit 0
 fi
+exit 1
 EOF
-    chmod +x "${MOCK_DIR}/nmap"
+    chmod +x "${MOCK_DIR}/arping"
 
     # Create mock virsh
     cat << 'EOF' > "${MOCK_DIR}/virsh"

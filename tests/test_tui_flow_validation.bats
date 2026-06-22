@@ -89,7 +89,7 @@ EOF
     #   both primary Linux packaging environments. This allows us to verify that our dependency installer
     #   logic correctly detects the host OS flavor and invokes the appropriate package management commands.
     # ==========================================
-    for cmd in virt-install wget nmap ping ssh ssh-keygen apt-get dnf kvm-ok; do
+    for cmd in virt-install wget arping ping ssh ssh-keygen apt-get dnf kvm-ok; do
         cat > "$MOCK_DIR/$cmd" <<'EOF'
 #!/usr/bin/env bash
 exit 0

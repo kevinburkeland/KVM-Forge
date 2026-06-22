@@ -9,7 +9,7 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 - **Multi-Distro Support:** Seamlessly deploy Ubuntu, Debian, AlmaLinux, Gentoo, and Fedora, automatically handling OS-specific configurations like predictable network interface names and unique checksum verification files.
 - **Collision-Free Checksums:** Dynamically manages version-specific checksum files (e.g. `ubuntu-${VERSION}-MD5SUMS`, `debian-${VERSION}-SHA512SUMS`, `alma-${VERSION}-CHECKSUM`) to prevent collision and cache validation issues when pulling multiple versions of the same distribution sequentially.
 - **Automated Provisioning:** Uses `cloud-init` and `virt-install` to bootstrap new VMs with your SSH keys, custom users, and security hardening (disabled root SSH & password auth).
-- **Dynamic Networking:** Automatically scans your local subnet with `nmap`, identifies active IPs, and assigns the first available IP address to your new VM.
+- **Dynamic Networking:** Automatically scans your local subnet with `arping`, identifies active IPs, and assigns the first available IP address to your new VM.
 - **Dynamic Thematic VM Naming:** Automatically assigns hostnames from curated theme-based name lists and avoids collisions with existing VM names.
 - **Pre-configured Profiles:** Deploy purpose-built environments instantly. Available profiles include: `base`, `docker`, `python`, `testing`, `home-assistant` (Ubuntu only), and `jupyter-datascience` (Ubuntu only).
 - **Interactive TUI:** Includes both a `setup.sh` configuration wizard and a `kvm-forge-tui` provisioner, both powered by `gum`, for a guided Terminal UI experience without needing to memorize flags.
