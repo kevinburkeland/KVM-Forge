@@ -122,8 +122,8 @@ EOF
             has_cloud_config=true
         fi
         
-        # Apply the yq modification and save to a temporary file reading directly from the source
-        yq "$query" "$file" > "${file}.tmp"
+        # Apply the yq modification and save to a temporary file, piping via STDIN redirection to support Snap confinement
+        yq "$query" < "$file" > "${file}.tmp"
         
         # Restore the header if it was accidentally removed
         if [ "$has_cloud_config" = true ] && ! head -n 1 "${file}.tmp" | grep -q "^#cloud-config"; then
