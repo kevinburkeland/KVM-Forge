@@ -21,10 +21,81 @@ fi
 # Ensure the 'gum' tool is installed, which we use for the interactive UI
 check_and_install_dependencies "gum"
 
+# Check if a yq update is available (and prompt to update if interactive)
+check_for_yq_updates
+
 # Create the config directory if it doesn't already exist
 mkdir -p "${SCRIPT_DIR}/config"
 # Define the path where we will save the environment variables
 ENV_FILE="${SCRIPT_DIR}/config/forge.env"
+
+# Validation helpers for network and configuration parameters
+validate_ip() {
+    local ip="$1"
+    if [[ "$ip" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+        for octet in "${BASH_REMATCH[@]:1}"; do
+            if ((octet < 0 || octet > 255)); then
+                return 1
+            fi
+        done
+        return 0
+    fi
+    return 1
+}
+
+validate_subnet_cidr() {
+    local cidr="$1"
+    if [[ "$cidr" =~ ^([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/([0-9]{1,2})$ ]]; then
+        local ip="${BASH_REMATCH[1]}"
+        local mask="${BASH_REMATCH[2]}"
+        if validate_ip "$ip" && ((mask >= 1 && mask <= 32)); then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+validate_cidr_suffix() {
+    local suffix="$1"
+    if [[ "$suffix" =~ ^[0-9]{1,2}$ ]] && ((suffix >= 1 && suffix <= 32)); then
+        return 0
+    fi
+    return 1
+}
+
+clean_and_validate_dns() {
+    local dns_input="$1"
+    local cleaned=""
+    cleaned=$(echo "$dns_input" | tr -d '[:space:]')
+    if [ -z "$cleaned" ]; then
+        return 1
+    fi
+    local dns_arr
+    IFS=',' read -ra dns_arr <<< "$cleaned"
+    for dns in "${dns_arr[@]}"; do
+        if ! validate_ip "$dns"; then
+            return 1
+        fi
+    done
+    echo "$cleaned"
+    return 0
+}
+
+validate_username() {
+    local username="$1"
+    if [[ "$username" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+validate_bridge() {
+    local bridge="$1"
+    if [[ "$bridge" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        return 0
+    fi
+    return 1
+}
 
 
 # Display a stylized header using gum
@@ -66,22 +137,59 @@ fi
 echo ""
 echo "KVM uses a virtual network switch (a bridge) to connect your VMs together and out to the internet."
 echo "The Bridge Interface Name is the name of this virtual switch on your host machine."
-echo "The Subnet Scan Range defines the pool of IP addresses KVM-Forge is allowed to assign."
+echo "The IP Allocation Pool defines the range of IP addresses KVM-Forge is allowed to assign."
 echo "The CIDR Suffix defines the subnet mask length (e.g., leave as 24 for standard home networks)."
-echo "By setting the subnet scan range, you can ensure that KVM-Forge does not assign IP addresses that are already in use by other devices on your network."
+echo "By setting the IP allocation pool, you can ensure that KVM-Forge does not assign IP addresses that are already in use by other devices on your network."
 echo "You can even set it to a small range, such as .64/26, to limit the number of IP addresses that KVM-Forge can assign."
-FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "$default_bridge" --value "${FORGE_BRIDGE_IF:-$default_bridge}")
-FORGE_SUBNET_SCAN=$(gum input --prompt "Subnet Scan Range: " --placeholder "192.168.122.64/26" --value "${FORGE_SUBNET_SCAN:-192.168.122.64/26}")
-FORGE_CIDR_SUFFIX=$(gum input --prompt "CIDR Suffix: " --placeholder "24" --value "${FORGE_CIDR_SUFFIX:-24}")
+
+while true; do
+    FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "$default_bridge" --value "${FORGE_BRIDGE_IF:-$default_bridge}")
+    if validate_bridge "$FORGE_BRIDGE_IF"; then
+        break
+    fi
+    log_err "Invalid bridge interface name. Use only alphanumeric characters, hyphens, and underscores."
+done
+
+while true; do
+    FORGE_IP_POOL=$(gum input --prompt "IP Allocation Pool: " --placeholder "192.168.122.64/26" --value "${FORGE_IP_POOL:-192.168.122.64/26}")
+    if validate_subnet_cidr "$FORGE_IP_POOL"; then
+        break
+    fi
+    log_err "Invalid IP allocation pool format. Must be a valid CIDR block (e.g., 192.168.122.64/26)."
+done
+
+while true; do
+    FORGE_CIDR_SUFFIX=$(gum input --prompt "CIDR Suffix: " --placeholder "24" --value "${FORGE_CIDR_SUFFIX:-24}")
+    if validate_cidr_suffix "$FORGE_CIDR_SUFFIX"; then
+        break
+    fi
+    log_err "Invalid CIDR suffix. Must be an integer between 1 and 32."
+done
 
 echo -e "\n--- Routing & DNS ---"
 echo "These settings are injected into the VM so it knows how to route traffic and resolve names."
 echo "Gateway IP: The router address on the virtual network (usually the host machine's virtual IP: 192.168.122.1)."
 echo "DNS Search Domain: Appended to short hostnames (e.g., 'ping server' becomes 'ping server.forge.example')."
 echo "DNS Servers: The upstream resolvers used to reach the public internet (e.g., Google DNS)."
-FORGE_GATEWAY=$(gum input --prompt "Gateway IP: " --placeholder "192.168.122.1" --value "${FORGE_GATEWAY:-192.168.122.1}")
+
+while true; do
+    FORGE_GATEWAY=$(gum input --prompt "Gateway IP: " --placeholder "192.168.122.1" --value "${FORGE_GATEWAY:-192.168.122.1}")
+    if validate_ip "$FORGE_GATEWAY"; then
+        break
+    fi
+    log_err "Invalid Gateway IP address. Must be a valid IPv4 address (e.g., 192.168.122.1)."
+done
+
 FORGE_DNS_SEARCH=$(gum input --prompt "DNS Search Domain: " --placeholder "forge.example" --value "${FORGE_DNS_SEARCH:-forge.example}")
-FORGE_DNS_SERVERS=$(gum input --prompt "DNS Servers (comma separated): " --placeholder "8.8.8.8,8.8.4.4" --value "${FORGE_DNS_SERVERS:-8.8.8.8,8.8.4.4}")
+
+while true; do
+    FORGE_DNS_SERVERS=$(gum input --prompt "DNS Servers (comma separated): " --placeholder "8.8.8.8,8.8.4.4" --value "${FORGE_DNS_SERVERS:-8.8.8.8,8.8.4.4}")
+    if cleaned_dns=$(clean_and_validate_dns "$FORGE_DNS_SERVERS"); then
+        FORGE_DNS_SERVERS="$cleaned_dns"
+        break
+    fi
+    log_err "Invalid DNS servers list. Must be comma-separated valid IPv4 addresses."
+done
 
 # Gather base domain, default username, and timezone preferences
 echo -e "\n--- System Preferences ---"
@@ -89,7 +197,15 @@ echo "Base Domain: The root domain name applied to all your VMs for local DNS co
 echo "Default VM Username: The unprivileged user created automatically via cloud-init."
 echo "Timezone: Ensures log timestamps and system clocks are synchronized across your lab."
 FORGE_BASE_DOMAIN=$(gum input --prompt "Base Domain: " --placeholder "forge.example" --value "${FORGE_BASE_DOMAIN:-forge.example}")
-FORGE_DEFAULT_USER=$(gum input --prompt "Default VM Username: " --placeholder "forge" --value "${FORGE_DEFAULT_USER:-forge}")
+
+while true; do
+    FORGE_DEFAULT_USER=$(gum input --prompt "Default VM Username: " --placeholder "forge" --value "${FORGE_DEFAULT_USER:-forge}")
+    if validate_username "$FORGE_DEFAULT_USER"; then
+        break
+    fi
+    log_err "Invalid VM username. Must start with a letter/underscore and contain only lowercase letters, numbers, hyphens, and underscores."
+done
+
 # Auto-detect local timezone to suggest on initial run
 DETECTED_TZ=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || readlink /etc/localtime | awk -F'/zoneinfo/' '{print $2}' || echo "GMT")
 [ -z "$DETECTED_TZ" ] && DETECTED_TZ="GMT"
@@ -117,6 +233,10 @@ echo "To enable secure, passwordless automation, KVM-Forge injects an SSH public
 echo "You can provide an existing key, or generate a fresh, secure key specifically for KVM."
 echo "Select how you want to handle SSH keys for the VMs:"
 SSH_CHOICE=$(gum choose "Use existing public key" "Generate a new ED25519 keypair" "Pull public key from GitHub")
+
+# Ensure the local SSH configuration directory exists with correct secure permissions
+mkdir -p "$HOME/.ssh"
+chmod 700 "$HOME/.ssh"
 
 if [ "$SSH_CHOICE" == "Use existing public key" ]; then
     # Try to find a common existing public key
@@ -201,7 +321,7 @@ cat > "$TMP_ENV_FILE" <<EOF
 FORGE_NET_MODE="$FORGE_NET_MODE"
 FORGE_NIC="$FORGE_NIC"
 FORGE_BRIDGE_IF="$FORGE_BRIDGE_IF"
-FORGE_SUBNET_SCAN="$FORGE_SUBNET_SCAN"
+FORGE_IP_POOL="$FORGE_IP_POOL"
 FORGE_CIDR_SUFFIX="$FORGE_CIDR_SUFFIX"
 FORGE_GATEWAY="$FORGE_GATEWAY"
 FORGE_DNS_SEARCH="$FORGE_DNS_SEARCH"
@@ -233,7 +353,7 @@ if ! ip link show "$FORGE_BRIDGE_IF" >/dev/null 2>&1; then
             fi
         else
             # Deduce the full network block from the gateway and CIDR suffix,
-            # keeping the arping scan range subset strictly isolated for KVM-Forge VM allocation.
+            # keeping the arping allocation pool subset strictly isolated for KVM-Forge VM allocation.
             # Avoid using 'local' keyword outside a function to prevent shell crashes.
             full_subnet=$(calculate_subnet_base "$FORGE_GATEWAY" "$FORGE_CIDR_SUFFIX")
             

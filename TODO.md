@@ -64,6 +64,7 @@ A running list of planned improvements and additions.
 - [x] Support reading default flag values from `config/forge.env`
 - [x] GitHub Actions CI to run bats test suite on push
 - [ ] Add shellcheck linting and enforce it in CI
+- [ ] Rename `NEWIP_YAML` to `IP_CIDR` or `IP_WITH_PREFIX` to avoid misleading scopes
 - [x] Expand env-file validation to support safe escaped values while rejecting command substitution
 
 ---

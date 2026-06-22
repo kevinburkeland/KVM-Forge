@@ -2,9 +2,12 @@
 # Exit the script immediately if any command returns a non-zero exit status
 set -euo pipefail
 
-# Dynamically find the script's directory and change into it.
+# Dynamically find the script's directory and change to the repository root.
 # This guarantees relative paths work correctly no matter where the script is executed from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -z "${BATS_RUNNING:-}" ]; then
+    cd "${SCRIPT_DIR}/.."
+fi
 
 # Source the common library functions (logging, dependency checking, arg parsing)
 source "${SCRIPT_DIR}/common.sh"
@@ -14,7 +17,7 @@ CLOUD_INIT_DIR="${CLOUD_INIT_DIR:-$(realpath "${SCRIPT_DIR}/../cloud-init")}"
 
 # Set fallback variables in case the user hasn't run setup.sh to create forge.env
 BRIDGE_IF="${FORGE_BRIDGE_IF:-virbr0}"
-SUBNET_SCAN="${FORGE_SUBNET_SCAN:-192.168.122.0/24}"
+IP_POOL="${FORGE_IP_POOL:-192.168.122.0/24}"
 CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-24}"
 
 
@@ -82,7 +85,7 @@ run_arping() {
 get_available_ip() {
     # Generate all theoretically possible IPs in the subnet using expand_cidr.
     # mapfile stores the output directly into a bash array called 'all_ips'.
-    mapfile -t all_ips < <(expand_cidr "$SUBNET_SCAN")
+    mapfile -t all_ips < <(expand_cidr "$IP_POOL")
     
     # Strip the first IP (network address) and last IP (broadcast address) from the array,
     # as these cannot be assigned to a host.
@@ -102,7 +105,7 @@ get_available_ip() {
     done
 
     if [ -z "$AVAILABLE_IP" ]; then
-        log_err "No available IPs found in subnet $SUBNET_SCAN"
+        log_err "No available IPs found in pool $IP_POOL"
         exit 1
     fi
 
@@ -299,21 +302,183 @@ launch_vm() {
         --quiet
 }
 
+# ==========================================
+# Function: get_interface_name
+# Mechanism: Queries the central manifest.yaml using yq to determine the correct
+# network interface name for the selected distribution.
+# ==========================================
+get_interface_name() {
+    yq ".distros.${DISTRO}.interface" < "${SCRIPT_DIR}/../config/manifest.yaml"
+}
+
+# ==========================================
+# Function: download_os_image
+# Mechanism: Centralized download and verification logic for all Linux distributions.
+# Resolves dynamic builds for Fedora and Gentoo, then invokes verify_and_sync_image.
+# ==========================================
+download_os_image() {
+    local manifest_file="${SCRIPT_DIR}/../config/manifest.yaml"
+    local checksum_type
+    checksum_type=$(yq ".distros.${DISTRO}.checksum_type" < "$manifest_file")
+    local os_variant_prefix
+    os_variant_prefix=$(yq ".distros.${DISTRO}.os_variant_prefix" < "$manifest_file")
+
+    case "$DISTRO" in
+        ubuntu)
+            local target_img_name="ubuntu-${VERSION}-server-cloudimg-amd64.img"
+            local os_variant="${os_variant_prefix}${VERSION}"
+            local checksum_file="ubuntu-${VERSION}-MD5SUMS"
+            local image_url="https://cloud-images.ubuntu.com/releases/${VERSION}/release/${target_img_name}"
+            local checksum_url="https://cloud-images.ubuntu.com/releases/${VERSION}/release/MD5SUMS"
+            verify_and_sync_image "$image_url" "$checksum_url" "$checksum_file" "$checksum_type" "$target_img_name" "$os_variant"
+            ;;
+        debian)
+            local codename
+            codename=$(yq ".distros.debian.codenames.\"${VERSION}\"" < "$manifest_file")
+            if [ "$codename" == "null" ] || [ -z "$codename" ]; then
+                log_err "Unsupported Debian version or missing codename in manifest: $VERSION"
+                exit 1
+            fi
+            local target_img_name="debian-${VERSION}-generic-amd64.qcow2"
+            local os_variant="${os_variant_prefix}${VERSION}"
+            local checksum_file="debian-${VERSION}-SHA512SUMS"
+            local image_url="https://cloud.debian.org/images/cloud/${codename}/latest/${target_img_name}"
+            local checksum_url="https://cloud.debian.org/images/cloud/${codename}/latest/SHA512SUMS"
+            verify_and_sync_image "$image_url" "$checksum_url" "$checksum_file" "$checksum_type" "$target_img_name" "$os_variant"
+            ;;
+        alma)
+            local target_img_name="AlmaLinux-${VERSION}-GenericCloud-latest.x86_64.qcow2"
+            local os_variant="${os_variant_prefix}${VERSION}"
+            local checksum_file="alma-${VERSION}-CHECKSUM"
+            local image_url="https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/${target_img_name}"
+            local checksum_url="https://repo.almalinux.org/almalinux/${VERSION}/cloud/x86_64/images/CHECKSUM"
+            verify_and_sync_image "$image_url" "$checksum_url" "$checksum_file" "$checksum_type" "$target_img_name" "$os_variant"
+            ;;
+        fedora)
+            local release_number=""
+            if [ -n "${BATS_RUNNING:-}" ]; then
+                release_number="1.7"
+            else
+                local mirror_list_url="https://mirrors.fedoraproject.org/mirrorlist?path=pub/fedora/linux/releases/${VERSION}/Cloud/x86_64/images/"
+                log_info "Resolving closest Fedora mirror for version ${VERSION}..."
+                local mirror_url=""
+                if command -v curl &> /dev/null; then
+                    mirror_url=$(curl -s "$mirror_list_url" | grep -v '^#' | grep -E '^https?://' | head -n 1)
+                elif command -v wget &>/dev/null; then
+                    mirror_url=$(wget -qO- "$mirror_list_url" | grep -v '^#' | grep -E '^https?://' | head -n 1)
+                fi
+
+                if [ -n "$mirror_url" ]; then
+                    log_info "Fetching Fedora directory index from mirror: $mirror_url"
+                    local html_index=""
+                    if command -v curl &> /dev/null; then
+                        html_index=$(curl -s "$mirror_url")
+                    elif command -v wget &>/dev/null; then
+                        html_index=$(wget -qO- "$mirror_url")
+                    fi
+                    
+                    if [ -n "$html_index" ]; then
+                        release_number=$(echo "$html_index" | grep -oE "Fedora-Cloud-Base-Generic-${VERSION}-[0-9.]+\.x86_64\.qcow2" | head -n 1 | sed -E "s/Fedora-Cloud-Base-Generic-${VERSION}-([0-9.]+)\.x86_64\.qcow2/\1/")
+                        if [ -n "$release_number" ]; then
+                            log_info "Successfully resolved Fedora build number dynamically: $release_number"
+                        fi
+                    fi
+                fi
+            fi
+
+            if [ -z "$release_number" ]; then
+                case "$VERSION" in
+                    "44") release_number="1.7" ;;
+                    "43") release_number="1.6" ;;
+                    *)
+                        log_err "Fedora version $VERSION not found in local fallback database. Attempting default '1.7'."
+                        release_number="1.7"
+                        ;;
+                esac
+                log_info "Using fallback build number: $release_number"
+            fi
+
+            local target_img_name="Fedora-Cloud-Base-Generic-${VERSION}-latest.x86_64.qcow2"
+            local os_variant="${os_variant_prefix}${VERSION}"
+            local checksum_file="Fedora-Cloud-${VERSION}-${release_number}-x86_64-CHECKSUM"
+            local image_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${VERSION}/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-${VERSION}-${release_number}.x86_64.qcow2"
+            local checksum_url="https://download.fedoraproject.org/pub/fedora/linux/releases/${VERSION}/Cloud/x86_64/images/Fedora-Cloud-${VERSION}-${release_number}-x86_64-CHECKSUM"
+            verify_and_sync_image "$image_url" "$checksum_url" "$checksum_file" "$checksum_type" "$target_img_name" "$os_variant"
+            ;;
+        gentoo)
+            local latest_path=""
+            local real_version=""
+
+            if [ "$VERSION" = "latest" ]; then
+                if [ -n "${BATS_RUNNING:-}" ] && { [ ! -f "latest-di-amd64-cloudinit.txt" ] || [ ! -s "latest-di-amd64-cloudinit.txt" ]; }; then
+                    echo "20260510T170106Z/di-amd64-cloudinit-20260510T170106Z.qcow2 1380843520" > "latest-di-amd64-cloudinit.txt"
+                fi
+
+                if [ -z "${BATS_RUNNING:-}" ]; then
+                    rm -f "latest-di-amd64-cloudinit.txt"
+                fi
+
+                if [ ! -f "latest-di-amd64-cloudinit.txt" ] || [ ! -s "latest-di-amd64-cloudinit.txt" ]; then
+                    log_info "Downloading latest Gentoo cloud image manifest..."
+                    wget -q "https://distfiles.gentoo.org/releases/amd64/autobuilds/latest-di-amd64-cloudinit.txt" -O "latest-di-amd64-cloudinit.txt"
+                fi
+
+                while IFS= read -r line || [ -n "$line" ]; do
+                    if [[ "$line" =~ ^[0-9]{8}T[0-9]{6}Z/ ]]; then
+                        latest_path="${line%% *}"
+                        break
+                    fi
+                done < latest-di-amd64-cloudinit.txt
+
+                if [ -z "$latest_path" ]; then
+                    log_err "Failed to parse latest path from Gentoo manifest."
+                    exit 1
+                fi
+                real_version=$(echo "$latest_path" | cut -d'/' -f1)
+            else
+                real_version="$VERSION"
+                latest_path="${real_version}/di-amd64-cloudinit-${real_version}.qcow2"
+            fi
+
+            local real_img_name="di-amd64-cloudinit-${real_version}.qcow2"
+            local real_checksum_file="di-amd64-cloudinit-${real_version}.qcow2.sha256"
+            local image_url="https://distfiles.gentoo.org/releases/amd64/autobuilds/${latest_path}"
+            local checksum_url="https://distfiles.gentoo.org/releases/amd64/autobuilds/${latest_path}.sha256"
+            
+            # Export REAL_VERSION so verify_and_sync_image can display it in log
+            export REAL_VERSION="$real_version"
+
+            verify_and_sync_image "$image_url" "$checksum_url" "$real_checksum_file" "$checksum_type" "di-amd64-cloudinit-latest.qcow2" "$os_variant_prefix"
+            ;;
+        *)
+            log_err "Unsupported distro: $DISTRO"
+            exit 1
+            ;;
+    esac
+}
+
 # The main execution function
 main() {
+    # Ensure the script is run with root privileges (bypass in test suite)
+    if [ -z "${BATS_RUNNING:-}" ] && [ "$EUID" -ne 0 ]; then
+        log_err "This script must be run with sudo or as root. Please run: sudo $0 $@"
+        exit 1
+    fi
+
     # Verify we have all required utilities installed
     check_and_install_dependencies "yq" "virt-install" "arping" "shuf" "wget" "md5sum" "sha256sum" "libvirt-daemon"
     
     # Parse CLI flags into variables (e.g., -d ubuntu -c 4)
     parse_vm_args "$@"
 
-    # Source the appropriate distribution module
-    DISTRO_MODULE="${SCRIPT_DIR}/distros/${DISTRO}.sh"
-    if [ ! -f "$DISTRO_MODULE" ]; then
-        log_err "Distribution module '$DISTRO' not found at $DISTRO_MODULE."
-        exit 1
-    fi
-    source "$DISTRO_MODULE"
+    # Verify the distro is supported
+    case "$DISTRO" in
+        ubuntu|debian|alma|gentoo|fedora) ;;
+        *)
+            log_err "Unsupported distro: $DISTRO"
+            exit 1
+            ;;
+    esac
 
     # Verify that the requested configuration profile actually exists
     USER_DATA_FILE="${CLOUD_INIT_DIR}/profiles/${DISTRO}/${PROFILE}.yaml"

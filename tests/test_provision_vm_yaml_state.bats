@@ -252,7 +252,7 @@ teardown() {
 }
 
 @test "get_available_ip excludes network broadcast and occupied hosts" {
-    export SUBNET_SCAN="192.168.1.10/29"
+    export IP_POOL="192.168.1.10/29"
     export CIDR_SUFFIX="24"
 
     get_available_ip
@@ -263,7 +263,7 @@ teardown() {
 }
 
 @test "get_available_ip exits when no free addresses remain" {
-    export SUBNET_SCAN="192.168.1.10/29"
+    export IP_POOL="192.168.1.10/29"
     export CIDR_SUFFIX="24"
     cat > "$MOCK_DIR/arping" <<'EOF'
 #!/usr/bin/env bash

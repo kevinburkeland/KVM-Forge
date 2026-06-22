@@ -23,7 +23,14 @@ KVM-Forge is an automated, highly-modular provisioning system for creating and m
 
 ### Prerequisites
 
-Before starting, ensure your host machine is a Linux environment with KVM and Libvirt installed and running (e.g., verify with `kvm-ok` or `systemctl status libvirtd`).
+1. Ensure your host machine is a Linux environment with KVM and Libvirt installed and running (e.g., verify with `kvm-ok` or `systemctl status libvirtd`). If libvirtd is not running, enable and start it:
+   ```bash
+   sudo systemctl enable --now libvirtd
+   ```
+2. Clone the repository with submodules, or initialize them if you did a normal clone or downloaded a ZIP archive:
+   ```bash
+   git submodule update --init --recursive
+   ```
 
 ### 1. Setup Your Environment
 
@@ -80,7 +87,23 @@ To use it:
    ```
 Your custom scripts will automatically be executed during the VM's first boot, while KVM-Forge securely handles the networking, SSH keys, and system naming under the hood!
 
-### 4. Running Unit Tests
+### 4. Connecting to Your VM
+
+Once the provisioning script finishes successfully, it outputs the name, IP address, and default username of your new VM. 
+
+Since KVM-Forge hardens the VM by disabling password login and root SSH, you must connect using the SSH private key generated or configured during `setup.sh`:
+
+```bash
+# Connect using the generated KVM-Forge SSH key (replace <IP> and default username as needed)
+ssh -i ~/.ssh/id_ed25519_kvmforge forge@<IP>
+```
+
+If you chose to use your own pre-existing key (e.g. `~/.ssh/id_ed25519.pub`), simply use your standard ssh command:
+```bash
+ssh forge@<IP>
+```
+
+### 5. Running Unit Tests
 
 To run the testing suite, ensure you have `bats` installed on your host system, then run:
 

@@ -130,7 +130,25 @@ check_and_install_dependencies() {
                             # 'gum' install with apt
                             sudo apt-get update && sudo apt-get install -y gum
                             ;;
-                        yq) sudo snap install yq || sudo apt-get install -y yq ;;
+                        yq)
+                            log_info "Installing Mike Farah's Go-based yq from GitHub..."
+                            local arch="amd64"
+                            if [[ "$(uname -m)" == "aarch64" ]]; then
+                                arch="arm64"
+                            fi
+                            local yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}"
+                            sudo mkdir -p /usr/local/bin
+                            if command -v wget &>/dev/null; then
+                                sudo wget -q "$yq_url" -O /usr/local/bin/yq
+                                sudo chmod +x /usr/local/bin/yq
+                            elif command -v curl &>/dev/null; then
+                                sudo curl -sSL "$yq_url" -o /usr/local/bin/yq
+                                sudo chmod +x /usr/local/bin/yq
+                            else
+                                log_err "Neither wget nor curl is available to download yq."
+                                exit 1
+                            fi
+                            ;;
                         virt-install) sudo apt-get install -y virtinst ;;
                         arping) sudo apt-get install -y arping ;;
                         wget) sudo apt-get install -y wget ;;
@@ -154,7 +172,25 @@ gpgcheck=1
 gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
                             sudo dnf install -y gum
                             ;;
-                        yq) sudo dnf install -y yq ;;
+                        yq)
+                            log_info "Installing Mike Farah's Go-based yq from GitHub..."
+                            local arch="amd64"
+                            if [[ "$(uname -m)" == "aarch64" ]]; then
+                                arch="arm64"
+                            fi
+                            local yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}"
+                            sudo mkdir -p /usr/local/bin
+                            if command -v wget &>/dev/null; then
+                                sudo wget -q "$yq_url" -O /usr/local/bin/yq
+                                sudo chmod +x /usr/local/bin/yq
+                            elif command -v curl &>/dev/null; then
+                                sudo curl -sSL "$yq_url" -o /usr/local/bin/yq
+                                sudo chmod +x /usr/local/bin/yq
+                            else
+                                log_err "Neither wget nor curl is available to download yq."
+                                exit 1
+                            fi
+                            ;;
                         virt-install) sudo dnf install -y virt-install ;;
                         arping) sudo dnf install -y arping ;;
                         wget) sudo dnf install -y wget ;;
@@ -262,6 +298,10 @@ parse_vm_args() {
         # Shift past the flag itself (e.g. past '-d')
         shift
     done
+
+    if [ -z "${BATS_RUNNING:-}" ]; then
+        check_and_install_dependencies "yq"
+    fi
 
     MANIFEST_FILE="${FORGE_ROOT}/config/manifest.yaml"
     if [ ! -f "$MANIFEST_FILE" ]; then
@@ -501,4 +541,65 @@ calculate_subnet_base() {
     
     echo "${n1}.${n2}.${n3}.${n4}/${cidr}"
 }
+
+# ==========================================
+# Function: check_for_yq_updates
+# Mechanism: Interrogates the GitHub Release redirection headers to verify if the 
+# locally installed static yq binary is running the latest release version.
+# Prompts for update in interactive terminals.
+# ==========================================
+check_for_yq_updates() {
+    # If yq is not installed, the setup wizard will trigger the base download.
+    if ! command -v yq &>/dev/null; then
+        return 0
+    fi
+    
+    # Verify curl or wget is present to do the request
+    if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
+        return 0
+    fi
+
+    log_info "Checking for updates to the static yq utility..."
+    local local_version=""
+    local_version=$(yq --version 2>/dev/null | grep -oE "v[0-9.]+" | head -n1 || true)
+    
+    if [ -z "$local_version" ]; then
+        local_version="v$(yq --version 2>/dev/null | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -n1 || true)"
+    fi
+
+    local latest_version=""
+    if command -v curl &>/dev/null; then
+        latest_version=$(curl -sI https://github.com/mikefarah/yq/releases/latest | grep -i "^location:" | sed 's#.*/tag/##' | tr -d '\r\n ' || true)
+    elif command -v wget &>/dev/null; then
+        latest_version=$(wget --max-redirect 0 --server-response https://github.com/mikefarah/yq/releases/latest 2>&1 | grep -i "^location:" | sed 's#.*/tag/##' | tr -d '\r\n ' || true)
+    fi
+
+    if [ -n "$latest_version" ] && [ "$latest_version" != "$local_version" ] && [[ "$latest_version" =~ ^v[0-9] ]]; then
+        log_info "A new version of yq ($latest_version) is available. Currently installed: $local_version."
+        
+        # Only prompt in an interactive shell
+        if [ -t 0 ] && [ -z "${BATS_RUNNING:-}" ] && command -v gum &>/dev/null; then
+            if gum confirm "Would you like to update the yq binary to $latest_version now?"; then
+                log_info "Downloading and updating yq..."
+                local arch="amd64"
+                if [[ "$(uname -m)" == "aarch64" ]]; then
+                    arch="arm64"
+                fi
+                local yq_url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}"
+                sudo mkdir -p /usr/local/bin
+                if command -v wget &>/dev/null; then
+                    sudo wget -q "$yq_url" -O /usr/local/bin/yq
+                    sudo chmod +x /usr/local/bin/yq
+                elif command -v curl &>/dev/null; then
+                    sudo curl -sSL "$yq_url" -o /usr/local/bin/yq
+                    sudo chmod +x /usr/local/bin/yq
+                fi
+                log_info "Successfully updated yq to $latest_version!"
+            fi
+        else
+            log_info "To update yq, you can run this script in an interactive terminal or download the binary manually."
+        fi
+    fi
+}
+
 

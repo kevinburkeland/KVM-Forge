@@ -3,6 +3,9 @@ distros:
     default_version: "24.04"
     supported_versions: ["22.04", "24.04", "25.10", "26.04"]
     profiles: ["base", "docker", "python", "testing", "jupyter-datascience", "home-assistant"]
+    interface: "enp1s0"
+    checksum_type: "md5"
+    os_variant_prefix: "ubuntu"
   debian:
     default_version: "13"
     supported_versions: ["11", "12", "13"]
@@ -11,15 +14,27 @@ distros:
       "12": "bookworm"
       "13": "trixie"
     profiles: ["base", "docker", "python", "testing"]
+    interface: "enp1s0"
+    checksum_type: "sha512"
+    os_variant_prefix: "debian"
   alma:
     default_version: "10"
     supported_versions: ["8", "9", "10"]
     profiles: ["base", "docker", "python", "testing"]
+    interface: "eth0"
+    checksum_type: "sha256"
+    os_variant_prefix: "almalinux"
   gentoo:
     default_version: "latest"
     supported_versions: ["latest"]
     profiles: ["base", "docker", "python", "testing"]
+    interface: "enp1s0"
+    checksum_type: "sha256"
+    os_variant_prefix: "gentoo"
   fedora:
     default_version: "44"
     supported_versions: ["43", "44"]
     profiles: ["base", "docker", "python", "testing"]
+    interface: "enp1s0"
+    checksum_type: "sha256"
+    os_variant_prefix: "fedora"

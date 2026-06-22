@@ -25,7 +25,7 @@ setup() {
     export SCRIPT_DIR="${BATS_TEST_DIRNAME}/../lib"
     export CLOUD_INIT_DIR="${BATS_TEST_DIRNAME}/mock_cloud_init"
     export FORGE_BRIDGE_IF="testbridge"
-    export FORGE_SUBNET_SCAN="192.168.1.0/29"
+    export FORGE_IP_POOL="192.168.1.0/29"
     export DISTRO="ubuntu"
     export VERSION="24.04"
     
@@ -91,8 +91,6 @@ teardown() {
 @test "download_os_image sets correct variables for ubuntu" {
     export DISTRO="ubuntu"
     export VERSION="24.04"
-    
-    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
 
     # Mock wget and md5sum to prevent actual download
     cat << 'EOF' > "${MOCK_DIR}/wget"
@@ -144,8 +142,6 @@ EOF
     export DISTRO="debian"
     export VERSION="12"
 
-    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
-
     cat << 'EOF' > "${MOCK_DIR}/wget"
 #!/bin/bash
 exit 0
@@ -188,13 +184,13 @@ EOF
 }
 
 @test "debian interface name matches predictable virtio naming" {
-    source "${BATS_TEST_DIRNAME}/../lib/distros/debian.sh"
+    export DISTRO="debian"
 
     [ "$(get_interface_name)" = "enp1s0" ]
 }
 
 @test "gentoo interface name matches predictable virtio naming" {
-    source "${BATS_TEST_DIRNAME}/../lib/distros/gentoo.sh"
+    export DISTRO="gentoo"
 
     [ "$(get_interface_name)" = "enp1s0" ]
 }
@@ -202,8 +198,6 @@ EOF
 @test "download_os_image selects Gentoo latest image" {
     export DISTRO="gentoo"
     export VERSION="latest"
-
-    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
 
     cat << 'EOF' > "${MOCK_DIR}/wget"
 #!/bin/bash
@@ -247,7 +241,7 @@ EOF
 }
 
 @test "fedora interface name matches predictable virtio naming" {
-    source "${BATS_TEST_DIRNAME}/../lib/distros/fedora.sh"
+    export DISTRO="fedora"
 
     [ "$(get_interface_name)" = "enp1s0" ]
 }
@@ -255,8 +249,6 @@ EOF
 @test "download_os_image selects Fedora latest image" {
     export DISTRO="fedora"
     export VERSION="44"
-
-    source "${BATS_TEST_DIRNAME}/../lib/distros/${DISTRO}.sh"
 
     cat << 'EOF' > "${MOCK_DIR}/wget"
 #!/bin/bash

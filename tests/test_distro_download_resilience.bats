@@ -146,7 +146,8 @@ teardown() {
 }
 
 @test "ubuntu download_os_image redownloads once after checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/ubuntu.sh"
+    export DISTRO="ubuntu"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="24.04"
     export CHECKSUM_FAIL_MODE="once"
 
@@ -171,7 +172,8 @@ teardown() {
 }
 
 @test "ubuntu download_os_image aborts on second checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/ubuntu.sh"
+    export DISTRO="ubuntu"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="24.04"
     export CHECKSUM_FAIL_MODE="always"
 
@@ -183,7 +185,8 @@ teardown() {
 }
 
 @test "debian download_os_image redownloads once after checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/debian.sh"
+    export DISTRO="debian"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="12"
     export CHECKSUM_FAIL_MODE="once"
 
@@ -201,7 +204,8 @@ teardown() {
 }
 
 @test "debian download_os_image aborts on second checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/debian.sh"
+    export DISTRO="debian"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="12"
     export CHECKSUM_FAIL_MODE="always"
 
@@ -213,7 +217,8 @@ teardown() {
 }
 
 @test "alma download_os_image redownloads once after checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/alma.sh"
+    export DISTRO="alma"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="10"
     export CHECKSUM_FAIL_MODE="once"
 
@@ -231,7 +236,8 @@ teardown() {
 }
 
 @test "alma download_os_image aborts on second checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/alma.sh"
+    export DISTRO="alma"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="10"
     export CHECKSUM_FAIL_MODE="always"
 
@@ -243,7 +249,8 @@ teardown() {
 }
 
 @test "gentoo download_os_image redownloads once after checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/gentoo.sh"
+    export DISTRO="gentoo"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="latest"
     export CHECKSUM_FAIL_MODE="once"
 
@@ -261,7 +268,8 @@ teardown() {
 }
 
 @test "gentoo download_os_image aborts on second checksum mismatch" {
-    source "$REPO_ROOT/lib/distros/gentoo.sh"
+    export DISTRO="gentoo"
+    source "$REPO_ROOT/lib/provision_vm.sh"
     export VERSION="latest"
     export CHECKSUM_FAIL_MODE="always"
 

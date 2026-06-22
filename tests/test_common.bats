@@ -149,7 +149,7 @@ setup() {
 FORGE_NET_MODE="Bridged"
 FORGE_NIC="eth1"
 FORGE_BRIDGE_IF="virbr0"
-FORGE_SUBNET_SCAN="192.168.122.64/26"
+FORGE_IP_POOL="192.168.122.64/26"
 FORGE_GATEWAY="192.168.122.1"
 EOF
     run validate_forge_env_file "$env_file"

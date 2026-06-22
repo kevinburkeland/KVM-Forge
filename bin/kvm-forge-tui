@@ -108,7 +108,7 @@ execute_cli() {
 
 main() {
     if [ -z "${BATS_RUNNING:-}" ]; then
-        check_and_install_dependencies "gum" "libvirt-daemon"
+        check_and_install_dependencies "gum" "yq" "libvirt-daemon"
     fi
     
     gather_inputs
