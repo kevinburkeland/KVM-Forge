@@ -139,43 +139,44 @@ INNER
     # Minimal yq mock that intentionally drops #cloud-config header to verify yq_edit restores it.
     # It applies deterministic replacements matching queries used by prepare_cloud_init_config.
     make_mock "yq" '
- query="$1"
- input="$(cat)"
- input="$(printf "%s\n" "$input" | sed "1{/^#cloud-config$/d}")"
+  query="$1"
+  if [ -f "$2" ]; then
+    input="$(cat "$2")"
+  else
+    input="$(cat)"
+  fi
+  input="$(printf "%s\n" "$input" | sed "1{/^#cloud-config$/d}")"
 
- case "$query" in
-   *"addresses[0]"*)
-     printf "%s\n" "$input" | sed "s|^address: .*|address: ${NEWIP_YAML}|"
-     ;;
-   *"gateway4"*)
-     printf "%s\n" "$input" | sed "s|^gateway4: .*|gateway4: ${FORGE_GATEWAY}|"
-     ;;
-   *"nameservers.search[0]"*)
-     printf "%s\n" "$input" | sed "s|^search: .*|search: ${FORGE_DNS_SEARCH}|"
-     ;;
-   *"nameservers.addresses"*)
-     printf "%s\n" "$input" | sed "s|^dns: .*|dns: ${FORGE_DNS_SERVERS}|"
-     ;;
-   *".hostname"*)
-     printf "%s\n" "$input" | sed "s|^hostname: .*|hostname: ${REPNAME}|"
-     ;;
-   *".fqdn"*)
-     printf "%s\n" "$input" | sed "s|^fqdn: .*|fqdn: ${REPNAME_FQDN}|"
-     ;;
-   *".timezone"*)
-     printf "%s\n" "$input" | sed "s|^timezone: .*|timezone: ${FORGE_TIMEZONE}|"
-     ;;
-   *"ssh_authorized_keys"*)
-     printf "%s\n" "$input" | sed "s|^ssh_key: .*|ssh_key: ${FORGE_SSH_KEY}|"
-     ;;
-   *"users[0].name"*)
-     printf "%s\n" "$input" | sed "s|^user_name: .*|user_name: ${FORGE_DEFAULT_USER}|"
-     ;;
-   *)
-     printf "%s\n" "$input"
-     ;;
- esac
- '
+  if [[ "$query" == *"addresses[0]"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^address: .*|address: ${NEWIP_YAML}|")"
+  fi
+  if [[ "$query" == *"gateway4"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^gateway4: .*|gateway4: ${FORGE_GATEWAY:-}|")"
+  fi
+  if [[ "$query" == *"nameservers.search[0]"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^search: .*|search: ${FORGE_DNS_SEARCH:-}|")"
+  fi
+  if [[ "$query" == *"nameservers.addresses"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^dns: .*|dns: ${FORGE_DNS_SERVERS:-}|")"
+  fi
+  if [[ "$query" == *".hostname"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^hostname: .*|hostname: ${REPNAME}|")"
+  fi
+  if [[ "$query" == *".fqdn"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^fqdn: .*|fqdn: ${REPNAME_FQDN}|")"
+  fi
+  if [[ "$query" == *".timezone"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^timezone: .*|timezone: ${FORGE_TIMEZONE:-}|")"
+  fi
+  if [[ "$query" == *"ssh_authorized_keys"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^ssh_key: .*|ssh_key: ${FORGE_SSH_KEY:-}|")"
+  fi
+  if [[ "$query" == *"users[0].name"* ]]; then
+    input="$(printf "%s\n" "$input" | sed "s|^user_name: .*|user_name: ${FORGE_DEFAULT_USER:-}|")"
+  fi
+
+  printf "%s\n" "$input"
+  '
 
     source "$REPO_ROOT/lib/provision_vm.sh"
 

@@ -9,6 +9,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Load shared functions (like logging and dependency checks)
 source "${SCRIPT_DIR}/lib/common.sh"
 
+# Ensure the furnace submodule is initialized
+FURNACE_TUNE_BIN="${SCRIPT_DIR}/furnace/bin/furnace-tune"
+if [ ! -f "$FURNACE_TUNE_BIN" ]; then
+    log_err "The KVM-Furnace submodule is not initialized or missing."
+    echo "Please run the following commands to initialize it:"
+    echo "  git submodule update --init --recursive"
+    exit 1
+fi
+
 # Ensure the 'gum' tool is installed, which we use for the interactive UI
 check_and_install_dependencies "gum"
 
@@ -27,13 +36,41 @@ echo ""
 # Gather network configuration from the user using interactive prompts.
 # If the user just presses Enter, keep existing config values when present.
 echo -e "\n--- Network Topology ---"
+echo "Choose how your virtual machines will connect to the network:"
+echo "NAT Mode: Creates a private network block (e.g. 192.168.122.0/24) where the host routes and NATs VM traffic."
+echo "Bridged Mode: Binds your virtual machines directly to your physical network using a dedicated host network card (NIC)."
+
+default_mode="NAT Mode (Private subnet, routing)"
+if [ "${FORGE_NET_MODE:-}" = "Bridged" ]; then
+    default_mode="Bridged Mode (Dedicated physical NIC)"
+fi
+CHOSEN_MODE=$(gum choose --selected "$default_mode" "NAT Mode (Private subnet, routing)" "Bridged Mode (Dedicated physical NIC)")
+
+if [[ "$CHOSEN_MODE" == *"Bridged"* ]]; then
+    FORGE_NET_MODE="Bridged"
+    # For Bridged Mode, we prompt for the dedicated physical host NIC to bind to
+    while true; do
+        FORGE_NIC=$(gum input --prompt "Physical Host NIC to bind (e.g. eth1): " --placeholder "eth1" --value "${FORGE_NIC:-}")
+        if [ -n "$FORGE_NIC" ]; then
+            break
+        fi
+        log_err "Physical host NIC is required for Bridged Mode. Please enter an interface name."
+    done
+    default_bridge="forgebr0"
+else
+    FORGE_NET_MODE="NAT"
+    FORGE_NIC=""
+    default_bridge="virbr0"
+fi
+
+echo ""
 echo "KVM uses a virtual network switch (a bridge) to connect your VMs together and out to the internet."
-echo "The Bridge Interface Name (usually virbr0) is the name of this virtual switch on your host machine."
+echo "The Bridge Interface Name is the name of this virtual switch on your host machine."
 echo "The Subnet Scan Range defines the pool of IP addresses KVM-Forge is allowed to assign."
 echo "The CIDR Suffix defines the subnet mask length (e.g., leave as 24 for standard home networks)."
 echo "By setting the subnet scan range, you can ensure that KVM-Forge does not assign IP addresses that are already in use by other devices on your network."
 echo "You can even set it to a small range, such as .64/26, to limit the number of IP addresses that KVM-Forge can assign."
-FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "virbr0" --value "${FORGE_BRIDGE_IF:-virbr0}")
+FORGE_BRIDGE_IF=$(gum input --prompt "Bridge Interface Name: " --placeholder "$default_bridge" --value "${FORGE_BRIDGE_IF:-$default_bridge}")
 FORGE_SUBNET_SCAN=$(gum input --prompt "Subnet Scan Range: " --placeholder "192.168.122.64/26" --value "${FORGE_SUBNET_SCAN:-192.168.122.64/26}")
 FORGE_CIDR_SUFFIX=$(gum input --prompt "CIDR Suffix: " --placeholder "24" --value "${FORGE_CIDR_SUFFIX:-24}")
 
@@ -161,6 +198,8 @@ fi
 TMP_ENV_FILE=$(mktemp)
 trap 'rm -f "${TMP_ENV_FILE:-}"' EXIT
 cat > "$TMP_ENV_FILE" <<EOF
+FORGE_NET_MODE="$FORGE_NET_MODE"
+FORGE_NIC="$FORGE_NIC"
 FORGE_BRIDGE_IF="$FORGE_BRIDGE_IF"
 FORGE_SUBNET_SCAN="$FORGE_SUBNET_SCAN"
 FORGE_CIDR_SUFFIX="$FORGE_CIDR_SUFFIX"
@@ -184,14 +223,29 @@ if ! ip link show "$FORGE_BRIDGE_IF" >/dev/null 2>&1; then
     echo ""
     log_info "Required network bridge interface '$FORGE_BRIDGE_IF' is missing on your host."
     if gum confirm "Would you like KVM-Furnace to configure and tune this bridge network now?"; then
-        # Deduce the full network block from the gateway and CIDR suffix,
-        # keeping the nmap scan range subset strictly isolated for KVM-Forge VM allocation.
-        local gateway_base
-        gateway_base=$(echo "$FORGE_GATEWAY" | cut -d'.' -f1-3)
-        local full_subnet="${gateway_base}.0/${FORGE_CIDR_SUFFIX}"
-        
-        # Execute furnace-tune to prepare host capabilities, bridges, and NAT rules
-        sudo "${SCRIPT_DIR}/furnace/bin/furnace-tune" --bridge "$FORGE_BRIDGE_IF" --subnet "$full_subnet" --gateway "$FORGE_GATEWAY"
+        if [ "${FORGE_NET_MODE:-}" = "Bridged" ]; then
+            log_info "Executing KVM-Furnace to configure host bridge '$FORGE_BRIDGE_IF' bound to interface '$FORGE_NIC'..."
+            if ! sudo "$FURNACE_TUNE_BIN" --bridge "$FORGE_BRIDGE_IF" --nic "$FORGE_NIC"; then
+                log_err "KVM-Furnace failed to configure the bridge interface '$FORGE_BRIDGE_IF'."
+                echo "Please run KVM-Furnace manually in interactive wizard mode to diagnose:"
+                echo "  sudo furnace/bin/furnace-tune --interactive"
+                exit 1
+            fi
+        else
+            # Deduce the full network block from the gateway and CIDR suffix,
+            # keeping the nmap scan range subset strictly isolated for KVM-Forge VM allocation.
+            # Avoid using 'local' keyword outside a function to prevent shell crashes.
+            gateway_base=$(echo "$FORGE_GATEWAY" | cut -d'.' -f1-3)
+            full_subnet="${gateway_base}.0/${FORGE_CIDR_SUFFIX}"
+            
+            log_info "Executing KVM-Furnace to configure host bridge '$FORGE_BRIDGE_IF' with NAT subnet '$full_subnet'..."
+            if ! sudo "$FURNACE_TUNE_BIN" --bridge "$FORGE_BRIDGE_IF" --subnet "$full_subnet" --gateway "$FORGE_GATEWAY"; then
+                log_err "KVM-Furnace failed to configure the NAT bridge '$FORGE_BRIDGE_IF'."
+                echo "Please run KVM-Furnace manually in interactive wizard mode to diagnose:"
+                echo "  sudo furnace/bin/furnace-tune --interactive"
+                exit 1
+            fi
+        fi
     else
         log_info "Bridge configuration skipped. Ensure it is configured manually before deploying VMs."
     fi

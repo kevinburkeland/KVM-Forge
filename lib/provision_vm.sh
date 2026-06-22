@@ -122,8 +122,8 @@ EOF
             has_cloud_config=true
         fi
         
-        # Apply the yq modification and save to a temporary file
-        cat "$file" | yq "$query" > "${file}.tmp"
+        # Apply the yq modification and save to a temporary file reading directly from the source
+        yq "$query" "$file" > "${file}.tmp"
         
         # Restore the header if it was accidentally removed
         if [ "$has_cloud_config" = true ] && ! head -n 1 "${file}.tmp" | grep -q "^#cloud-config"; then
@@ -139,35 +139,34 @@ EOF
     # Replace the INTERFACE_NAME placeholder in the network-config with the actual interface
     sed -i "s/INTERFACE_NAME/$IFACE_NAME/g" "$TEMP_DIR/network-config"
 
-    # Use yq to dynamically inject our newly discovered IP address into the YAML structure
-    yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.addresses[0] = env(NEWIP_YAML)"
-
-    # Inject DNS and Gateway settings if they were defined during setup.sh
+    # Build a single chained query to edit network-config in one pass
+    local net_query=".network.ethernets.${IFACE_NAME}.addresses[0] = env(NEWIP_YAML)"
     if [ -n "${FORGE_GATEWAY:-}" ]; then
         export FORGE_GATEWAY
-        yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.gateway4 = env(FORGE_GATEWAY)"
+        net_query="${net_query} | .network.ethernets.${IFACE_NAME}.gateway4 = env(FORGE_GATEWAY)"
     fi
     if [ -n "${FORGE_DNS_SEARCH:-}" ]; then
         export FORGE_DNS_SEARCH
-        yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.nameservers.search[0] = env(FORGE_DNS_SEARCH)"
+        net_query="${net_query} | .network.ethernets.${IFACE_NAME}.nameservers.search[0] = env(FORGE_DNS_SEARCH)"
     fi
     if [ -n "${FORGE_DNS_SERVERS:-}" ]; then
         export FORGE_DNS_SERVERS
         # Convert the comma-separated DNS list into a true YAML array
-        yq_edit "$TEMP_DIR/network-config" ".network.ethernets.${IFACE_NAME}.nameservers.addresses = (env(FORGE_DNS_SERVERS) | split(\",\"))"
+        net_query="${net_query} | .network.ethernets.${IFACE_NAME}.nameservers.addresses = (env(FORGE_DNS_SERVERS) | split(\",\"))"
     fi
+
+    # Use yq to dynamically inject our newly discovered network settings in one call
+    yq_edit "$TEMP_DIR/network-config" "$net_query"
 
     # Inject the Hostname and FQDN into the user-data
     export REPNAME="$NEWNAME"
-    yq_edit "$TEMP_DIR/user-data" '.hostname = env(REPNAME)'
-
     export REPNAME_FQDN="$NEWNAME_FQDN"
-    yq_edit "$TEMP_DIR/user-data" '.fqdn = env(REPNAME_FQDN)'
+    local user_query=".hostname = env(REPNAME) | .fqdn = env(REPNAME_FQDN)"
 
     # Inject the Timezone
     if [ -n "${FORGE_TIMEZONE:-}" ]; then
         export FORGE_TIMEZONE
-        yq_edit "$TEMP_DIR/user-data" '.timezone = env(FORGE_TIMEZONE)'
+        user_query="${user_query} | .timezone = env(FORGE_TIMEZONE)"
     fi
 
     # Expand the tilde (~) in the SSH path into a true absolute path (e.g., /home/kevin)
@@ -182,14 +181,17 @@ EOF
     # Read the SSH public key and inject it into the authorized_keys list of the user-data
     if [ -n "$EXPANDED_KEY_PATH" ] && [ -f "$EXPANDED_KEY_PATH" ]; then
         export FORGE_SSH_KEY="$(cat "$EXPANDED_KEY_PATH")"
-        yq_edit "$TEMP_DIR/user-data" '.users[0].ssh_authorized_keys[0] = env(FORGE_SSH_KEY)'
+        user_query="${user_query} | .users[0].ssh_authorized_keys[0] = env(FORGE_SSH_KEY)"
     fi
 
     # Set the default login username
     if [ -n "${FORGE_DEFAULT_USER:-}" ]; then
         export FORGE_DEFAULT_USER
-        yq_edit "$TEMP_DIR/user-data" '.users[0].name = env(FORGE_DEFAULT_USER)'
+        user_query="${user_query} | .users[0].name = env(FORGE_DEFAULT_USER)"
     fi
+
+    # Run yq once for user-data!
+    yq_edit "$TEMP_DIR/user-data" "$user_query"
 
     # Replace the Jupyter Lab token placeholder if it exists in the user-data profile
     sed -i "s@JUPYTER_TOKEN_PLACEHOLDER@${FORGE_JUPYTER_TOKEN:-forge}@g" "$TEMP_DIR/user-data"

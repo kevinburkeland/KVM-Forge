@@ -146,6 +146,8 @@ setup() {
     # 1. Test a valid configuration
     cat << 'EOF' > "$env_file"
 # This is a comment
+FORGE_NET_MODE="Bridged"
+FORGE_NIC="eth1"
 FORGE_BRIDGE_IF="virbr0"
 FORGE_SUBNET_SCAN="192.168.122.64/26"
 FORGE_GATEWAY="192.168.122.1"
