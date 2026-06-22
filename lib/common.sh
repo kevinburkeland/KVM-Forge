@@ -103,9 +103,23 @@ check_and_install_dependencies() {
     # If we found missing dependencies, prompt the user for permission to install them
     if [ -n "$MISSING_CMDS" ]; then
         log_err "The following required commands are missing:$MISSING_CMDS"
-        read -p "Would you like to attempt to install them now? (y/n) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        
+        local auto_install=false
+        if [ "${FORGE_ASSUME_YES:-}" = "true" ] || [ "${FORGE_NON_INTERACTIVE:-}" = "true" ]; then
+            auto_install=true
+        fi
+        
+        if [ "$auto_install" = "true" ]; then
+            REPLY="y"
+        elif ! [ -t 0 ] && [ -z "${BATS_RUNNING:-}" ]; then
+            log_err "Non-interactive environment detected. Cannot prompt for installation. Please install missing commands manually."
+            exit 1
+        else
+            read -p "Would you like to attempt to install them now? (y/n) " -n 1 -r
+            echo
+        fi
+        
+        if [[ "${REPLY:-n}" =~ ^[Yy]$ ]]; then
             
             # Check if the system uses APT (Debian/Ubuntu)
             if command -v apt-get &> /dev/null; then
@@ -458,5 +472,33 @@ verify_and_sync_image() {
         log_info "Syncing base image to libvirt images directory..."
         sudo install -m 640 -- "$local_file" "$LIBVIRT_IMG_PATH"
     fi
+}
+
+# ==========================================
+# Function: calculate_subnet_base
+# Mechanism: Computes the base network IP and mask prefix dynamically using pure Bash bitwise arithmetic.
+# Arguments:
+#   1. gateway: The gateway IP address (e.g. 192.168.122.129)
+#   2. cidr: The CIDR mask suffix (e.g. 25)
+# ==========================================
+calculate_subnet_base() {
+    local gateway="$1"
+    local cidr="$2"
+    local ip_int=0
+    local mask_int=0
+    local net_int=0
+    local o1 o2 o3 o4
+    
+    IFS=. read -r o1 o2 o3 o4 <<< "$gateway"
+    ip_int=$(( (o1 << 24) + (o2 << 16) + (o3 << 8) + o4 ))
+    mask_int=$(( (0xFFFFFFFF << (32 - cidr)) & 0xFFFFFFFF ))
+    net_int=$(( ip_int & mask_int ))
+    
+    local n1=$(( (net_int >> 24) & 255 ))
+    local n2=$(( (net_int >> 16) & 255 ))
+    local n3=$(( (net_int >> 8) & 255 ))
+    local n4=$(( net_int & 255 ))
+    
+    echo "${n1}.${n2}.${n3}.${n4}/${cidr}"
 }
 

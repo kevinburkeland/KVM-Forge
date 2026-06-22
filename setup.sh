@@ -235,8 +235,7 @@ if ! ip link show "$FORGE_BRIDGE_IF" >/dev/null 2>&1; then
             # Deduce the full network block from the gateway and CIDR suffix,
             # keeping the nmap scan range subset strictly isolated for KVM-Forge VM allocation.
             # Avoid using 'local' keyword outside a function to prevent shell crashes.
-            gateway_base=$(echo "$FORGE_GATEWAY" | cut -d'.' -f1-3)
-            full_subnet="${gateway_base}.0/${FORGE_CIDR_SUFFIX}"
+            full_subnet=$(calculate_subnet_base "$FORGE_GATEWAY" "$FORGE_CIDR_SUFFIX")
             
             log_info "Executing KVM-Furnace to configure host bridge '$FORGE_BRIDGE_IF' with NAT subnet '$full_subnet'..."
             if ! sudo "$FURNACE_TUNE_BIN" --bridge "$FORGE_BRIDGE_IF" --subnet "$full_subnet" --gateway "$FORGE_GATEWAY"; then

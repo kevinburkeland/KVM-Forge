@@ -200,4 +200,37 @@ EOF
     rm -f "$env_file"
 }
 
+@test "calculate_subnet_base computes correct subnet base addresses" {
+    # Test typical /24
+    run calculate_subnet_base "192.168.122.1" "24"
+    [ "$status" -eq 0 ]
+    [ "$output" = "192.168.122.0/24" ]
+
+    # Test typical /24 with gateway not at .1
+    run calculate_subnet_base "192.168.122.15" "24"
+    [ "$status" -eq 0 ]
+    [ "$output" = "192.168.122.0/24" ]
+
+    # Test classless /25 subnet (e.g. gateway .129 -> base .128)
+    run calculate_subnet_base "192.168.122.129" "25"
+    [ "$status" -eq 0 ]
+    [ "$output" = "192.168.122.128/25" ]
+
+    # Test classless /25 subnet (e.g. gateway .1 -> base .0)
+    run calculate_subnet_base "192.168.122.1" "25"
+    [ "$status" -eq 0 ]
+    [ "$output" = "192.168.122.0/25" ]
+
+    # Test /16 subnet
+    run calculate_subnet_base "172.16.55.23" "16"
+    [ "$status" -eq 0 ]
+    [ "$output" = "172.16.0.0/16" ]
+
+    # Test /8 subnet
+    run calculate_subnet_base "10.50.80.99" "8"
+    [ "$status" -eq 0 ]
+    [ "$output" = "10.0.0.0/8" ]
+}
+
+
 

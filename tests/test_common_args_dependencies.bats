@@ -225,3 +225,10 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"OK"* ]]
 }
+
+@test "dependency checker fails in non-interactive environment when missing dependencies are detected" {
+    run bash -c "unset BATS_RUNNING; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/lib/common.sh'; check_and_install_dependencies missingcmd"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Non-interactive environment detected. Cannot prompt for installation."* ]]
+}
+
