@@ -125,6 +125,14 @@ get_random_hostname() {
     # Get a list of all currently known virtual machines via libvirt.
     mapfile -t name_array < <(sudo virsh list --all | grep forge.example | awk '{ print $2 }' | cut -d. -f1)
 
+    # Append any externally excluded names passed via environment
+    if [ -n "${FORGE_EXCLUDED_NAMES:-}" ]; then
+        local name
+        for name in ${FORGE_EXCLUDED_NAMES//,/ }; do
+            name_array+=("$name")
+        done
+    fi
+
     # Pick a random name from names.txt until we find one that doesn't conflict with an existing VM.
     while true; do
         NEWNAME=$(shuf -n 1 "${CLOUD_INIT_DIR}/common/names.txt")

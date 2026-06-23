@@ -88,6 +88,15 @@ teardown() {
     [[ "$NEWNAME_FQDN" == "${NEWNAME}.forge.example" ]]
 }
 
+@test "get_random_hostname respects FORGE_EXCLUDED_NAMES" {
+    export FORGE_BASE_DOMAIN="forge.example"
+    export FORGE_EXCLUDED_NAMES="baz"
+    get_random_hostname
+    
+    [[ "$NEWNAME" == "qux" ]]
+    [[ "$NEWNAME_FQDN" == "qux.forge.example" ]]
+}
+
 @test "download_os_image sets correct variables for ubuntu" {
     export DISTRO="ubuntu"
     export VERSION="24.04"
