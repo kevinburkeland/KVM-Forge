@@ -17,7 +17,7 @@ CLOUD_INIT_DIR="${CLOUD_INIT_DIR:-$(realpath "${SCRIPT_DIR}/../cloud-init")}"
 
 # Set fallback variables in case the user hasn't run setup.sh to create forge.env
 BRIDGE_IF="${FORGE_BRIDGE_IF:-virbr0}"
-IP_POOL="${FORGE_IP_POOL:-192.168.122.0/24}"
+IP_POOL="${FORGE_IP_POOL:-${FORGE_SUBNET_SCAN:-192.168.122.0/24}}"
 CIDR_SUFFIX="${FORGE_CIDR_SUFFIX:-24}"
 
 

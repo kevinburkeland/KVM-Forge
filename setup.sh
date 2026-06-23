@@ -151,7 +151,7 @@ while true; do
 done
 
 while true; do
-    FORGE_IP_POOL=$(gum input --prompt "IP Allocation Pool: " --placeholder "192.168.122.64/26" --value "${FORGE_IP_POOL:-192.168.122.64/26}")
+    FORGE_IP_POOL=$(gum input --prompt "IP Allocation Pool: " --placeholder "192.168.122.64/26" --value "${FORGE_IP_POOL:-${FORGE_SUBNET_SCAN:-192.168.122.64/26}}")
     if validate_subnet_cidr "$FORGE_IP_POOL"; then
         break
     fi

@@ -436,3 +436,16 @@ EOF
 
     rm -f "$custom_user_data"
 }
+
+@test "provision_vm loads FORGE_SUBNET_SCAN as IP_POOL if FORGE_IP_POOL is unset" {
+    run bash -c "export FORGE_SUBNET_SCAN='10.0.0.0/24'; source '$REPO_ROOT/lib/provision_vm.sh'; echo \"\$IP_POOL\""
+    [ "$status" -eq 0 ]
+    [ "$output" = "10.0.0.0/24" ]
+}
+
+@test "provision_vm prioritizes FORGE_IP_POOL over FORGE_SUBNET_SCAN" {
+    run bash -c "export FORGE_IP_POOL='192.168.2.0/24'; export FORGE_SUBNET_SCAN='10.0.0.0/24'; source '$REPO_ROOT/lib/provision_vm.sh'; echo \"\$IP_POOL\""
+    [ "$status" -eq 0 ]
+    [ "$output" = "192.168.2.0/24" ]
+}
+
