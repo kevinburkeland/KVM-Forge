@@ -285,3 +285,36 @@ teardown() {
     [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
 }
 
+@test "fedora download_os_image redownloads once after checksum mismatch" {
+    export DISTRO="fedora"
+    source "$REPO_ROOT/lib/provision_vm.sh"
+    export VERSION="44"
+    export CHECKSUM_FAIL_MODE="once"
+
+    : > "Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2"
+
+    run download_os_image
+    [ "$status" -eq 0 ]
+
+    run grep -q "SHA256 mismatch or file corrupt. Redownloading" <<< "$output"
+    [ "$status" -eq 0 ]
+
+    run /bin/grep -c "wget -q https://download.fedoraproject.org/pub/fedora/linux/releases/44/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2" "$CALL_LOG"
+    [ "$status" -eq 0 ]
+    [ "$output" -eq 1 ]
+}
+
+@test "fedora download_os_image aborts on second checksum mismatch" {
+    export DISTRO="fedora"
+    source "$REPO_ROOT/lib/provision_vm.sh"
+    export VERSION="44"
+    export CHECKSUM_FAIL_MODE="always"
+
+    : > "Fedora-Cloud-Base-Generic-44-1.7.x86_64.qcow2"
+
+    run download_os_image
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"The image verification failed due to an issue with the mirror or file."* ]]
+}
+
+
