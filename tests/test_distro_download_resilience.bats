@@ -69,7 +69,12 @@ EOF
     make_mock "dnf" 'echo "dnf $*" >> "$CALL_LOG"; exit 0'
 
     # Helpers used by distro scripts.
-    make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"; "$@"'
+    make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"
+while [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+    export "$1"
+    shift
+done
+"$@"'
     make_mock "install" 'echo "install $*" >> "$CALL_LOG"; exit 0'
     make_mock "rm" 'echo "rm $*" >> "$CALL_LOG"; /bin/rm "$@"'
 

@@ -104,7 +104,12 @@ INNER
  '
 
     # Helper command mocks used by dependency installers.
-    make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"; "$@"'
+    make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"
+while [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+    export "$1"
+    shift
+done
+"$@"'
     make_mock "curl" 'echo "curl $*" >> "$CALL_LOG"; printf "MOCK_GPG_KEY\n"'
     make_mock "gpg" 'echo "gpg $*" >> "$CALL_LOG"; cat >/dev/null; exit 0'
     make_mock "tee" 'echo "tee $*" >> "$CALL_LOG"; cat >/dev/null; exit 0'
@@ -227,7 +232,7 @@ teardown() {
 }
 
 @test "dependency checker fails in non-interactive environment when missing dependencies are detected" {
-    run bash -c "unset BATS_RUNNING; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/lib/common.sh'; check_and_install_dependencies missingcmd"
+    run bash -c "unset BATS_RUNNING; export PATH='$MOCK_DIR':\$PATH; source '$REPO_ROOT/lib/common.sh'; check_and_install_dependencies missingcmd" < /dev/null
     [ "$status" -ne 0 ]
     [[ "$output" == *"Non-interactive environment detected. Cannot prompt for installation."* ]]
 }

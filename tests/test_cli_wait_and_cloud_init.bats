@@ -83,7 +83,12 @@ EOF
 
     # Helpers used by wait loops and command flow.
     make_mock "sleep" 'echo "sleep $*" >> "$CALL_LOG"; exit 0'
-    make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"; "$@"'
+    make_mock "sudo" 'echo "sudo $*" >> "$CALL_LOG"
+while [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+    export "$1"
+    shift
+done
+"$@"'
 
     source "$REPO_ROOT/bin/kvm-forge-cli"
 
